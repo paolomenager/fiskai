@@ -10,11 +10,11 @@
 html{scroll-behavior:smooth}
 body{background:#0A0A0F;color:#fff;font-family:'Inter',sans-serif;overflow-x:hidden}
 :root{--g:#00C897;--bg:#0A0A0F;--card:#111118;--card2:#16161F;--border:rgba(255,255,255,0.06);--muted:rgba(255,255,255,0.4)}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;transition:all .3s}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 20px;height:64px;display:flex;align-items:center;justify-content:space-between;transition:all .3s;gap:12px}
 nav.s{background:rgba(10,10,15,0.92);backdrop-filter:blur(24px);border-bottom:1px solid var(--border)}
 .logo{font-size:17px;font-weight:800;letter-spacing:-.4px}
 .logo span{color:var(--g)}
-.nav-r{display:flex;align-items:center;gap:16px}
+.nav-r{display:flex;align-items:center;gap:10px}
 .nav-l{font-size:14px;color:var(--muted);font-weight:500;cursor:pointer;transition:color .2s}
 .nav-l:hover{color:#fff}
 .nbtn{background:var(--g);color:#000;border:none;border-radius:99px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
@@ -155,7 +155,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
 .r{opacity:0;transform:translateY(22px);transition:all .65s cubic-bezier(.4,0,.2,1)}
 .r.on{opacity:1;transform:translateY(0)}
 .d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
-@media(max-width:768px){.fgrid,.cgrid,.pgrid,.sbs{grid-template-columns:1fr}.fc-card.w2{grid-column:auto}.fc1,.fc2,.fc3{display:none}.phone{width:280px;height:570px}}
+@media(max-width:768px){.fgrid,.cgrid,.pgrid,.sbs{grid-template-columns:1fr}.fc-card.w2{grid-column:auto}.fc1,.fc2,.fc3{display:none}.phone{width:280px;height:570px}.nav-l{display:none}nav{padding:0 16px}}
 </style>
 </head>
 <body>
@@ -183,7 +183,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
   <div class="hbg"></div>
   <div class="htag"><span class="ldot"></span>France & Suisse · IA fiscale · 10 secteurs</div>
   <h1><span class="d">Ton comptable.</span><br><span class="a">Sans comptable.</span></h1>
-  <p class="hsub">Fiskai calcule tes impôts, optimise tes déductions et scanne tes factures. En temps réel. À 99€/mois.</p>
+  <p class="hsub">Fiskai calcule tes impôts, optimise tes déductions et scanne tes factures. En temps réel. À partir de 49€/mois.</p>
   <div class="hcta">
     <button class="bp" onclick="window.location.href='app.html'">Essai gratuit 14 jours</button>
     <button class="bg" onclick="document.getElementById('feat').scrollIntoView({behavior:'smooth'})">Voir le produit</button>
@@ -269,7 +269,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
 <div class="sec r" id="feat">
   <div class="sl">Fonctionnalités</div>
   <h2 class="sh">Tout ce que fait ton comptable.<br>En mieux.</h2>
-  <p class="sp">Fiskai couvre 100% des besoins fiscaux quotidiens — de l'artisan au dirigeant de SCI.</p>
+  <p class="sp">Fiskai couvre 100% des besoins fiscaux quotidiens — de l'artisan au dirigeant de société, en passant par les SCI.</p>
   <div class="fgrid r d1">
     <div class="fc-card w2">
       <div class="fci">🤖</div>
@@ -333,7 +333,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
   <div class="r d1">
     <div class="sl">Scan IA</div>
     <h2 class="sh">Une photo.<br><span style="color:var(--g)">C'est saisi.</span></h2>
-    <p class="sp">Photo d'un ticket ou facture → Claude Vision extrait tout en 2 secondes. Plus de tickets dans la poche, plus de saisie oubliée.</p>
+    <p class="sp">Photo d'un ticket ou facture → notre Scan IA extrait tout en 2 secondes. Plus de tickets dans la poche, plus de saisie oubliée.</p>
     <div style="margin-top:24px;display:flex;flex-direction:column;gap:9px">
       <div style="display:flex;gap:10px;font-size:14px;color:rgba(255,255,255,.6)"><span style="color:var(--g);font-weight:800">—</span>Tickets, factures, PDF</div>
       <div style="display:flex;gap:10px;font-size:14px;color:rgba(255,255,255,.6)"><span style="color:var(--g);font-weight:800">—</span>Montant HT, TVA, fournisseur, catégorie</div>
@@ -347,7 +347,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
   <h2 class="sh">Fiskai vs les autres.</h2>
   <div class="cgrid r d1">
     <div class="cc">
-      <div class="clabel">Pennylane, Indy & les autres</div>
+      <div class="clabel">Les solutions classiques</div>
       <div class="ci"><span class="cii" style="color:#FF6060">✗</span>France uniquement</div>
       <div class="ci"><span class="cii" style="color:#FF6060">✗</span>Aucun conseil fiscal proactif</div>
       <div class="ci"><span class="cii" style="color:#FF6060">✗</span>SCI non couverte</div>
@@ -426,7 +426,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
   </div>
 
   <div style="text-align:center;margin-top:24px;font-size:12px;color:rgba(255,255,255,.25)">
-    Tous les plans incluent France et Suisse · Annulation à tout moment · Paiement sécurisé
+    Tous les plans incluent France et Suisse · <strong style="color:rgba(255,255,255,.6)">Annulation à tout moment</strong> · Paiement sécurisé 🔒
   </div>
 </div>
 
@@ -455,7 +455,7 @@ footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;align-i
     </svg>
     <div class="flogo">fiskai</div>
   </div>
-  <div class="fcopy">© 2025 Fiskai · Ton comptable intelligent · France & Suisse</div>
+  <div class="fcopy">© 2026 Fiskai · Ton comptable intelligent · France & Suisse · <a href="cgu.html" style="color:var(--muted);text-decoration:none" onmouseover="this.style.color='var(--g)'" onmouseout="this.style.color='var(--muted)'">CGU</a> · <a href="confidentialite.html" style="color:var(--muted);text-decoration:none" onmouseover="this.style.color='var(--g)'" onmouseout="this.style.color='var(--muted)'">Confidentialité</a></div>
 </footer>
 
 <script>
