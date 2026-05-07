@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A0A12">
 <title>Fiskai — Ton comptable intelligent</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
 
@@ -647,6 +648,34 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
   </div>
 </div>
 
+<!-- LOGIN SCREEN -->
+<div id="auth-screen" style="position:fixed;inset:0;background:#0A0A0F;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
+  <svg width="56" height="56" viewBox="0 0 34 34" fill="none" style="margin-bottom:16px">
+    <rect width="34" height="34" rx="9" fill="#00C897"/>
+    <rect x="10" y="9" width="4" height="16" rx="1.5" fill="#0A0A0F"/>
+    <rect x="10" y="9" width="13" height="4" rx="1.5" fill="#0A0A0F"/>
+    <rect x="10" y="17" width="9" height="3.5" rx="1.5" fill="#0A0A0F"/>
+    <circle cx="26" cy="9" r="4" fill="#007D5E"/>
+    <circle cx="26" cy="9" r="2" fill="#004D3A"/>
+  </svg>
+  <div style="font-size:24px;font-weight:900;color:white;letter-spacing:-.5px;margin-bottom:6px">fiskai</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:40px">Ton comptable intelligent</div>
+  <div style="display:flex;background:rgba(255,255,255,.06);border-radius:12px;padding:4px;margin-bottom:24px;width:100%;max-width:340px">
+    <button id="tab-login" onclick="switchAuthTab('login')" style="flex:1;padding:10px;border:none;border-radius:9px;background:#00C897;color:#000;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer">Connexion</button>
+    <button id="tab-signup" onclick="switchAuthTab('signup')" style="flex:1;padding:10px;border:none;border-radius:9px;background:transparent;color:rgba(255,255,255,.5);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer">Créer un compte</button>
+  </div>
+  <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px">
+    <input id="auth-email" type="email" placeholder="Email" style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:white;outline:none;width:100%" onfocus="this.style.borderColor='#00C897'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+    <input id="auth-password" type="password" placeholder="Mot de passe (min. 6 caractères)" style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:white;outline:none;width:100%" onfocus="this.style.borderColor='#00C897'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+    <div id="auth-error" style="font-size:12px;color:#FF6060;font-weight:700;display:none;padding:0 4px"></div>
+    <button id="auth-btn" onclick="handleAuth()" style="background:#00C897;color:#000;border:none;border-radius:12px;padding:15px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;cursor:pointer;width:100%">Se connecter →</button>
+    <div style="text-align:center;font-size:12px;color:rgba(255,255,255,.3);cursor:pointer" onclick="resetPassword()">Mot de passe oublié ?</div>
+  </div>
+  <div style="margin-top:24px;font-size:11px;color:rgba(255,255,255,.2);text-align:center;max-width:280px">
+    En continuant tu acceptes nos <a href="cgu.html" style="color:rgba(255,255,255,.35)">CGU</a> et notre <a href="confidentialite.html" style="color:rgba(255,255,255,.35)">politique de confidentialité</a>
+  </div>
+</div>
+
 <!-- APP -->
 <div class="app" id="app">
   <div class="safe-top"></div>
@@ -844,6 +873,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
           <div class="set-row" onclick="startTuto()">
             <div class="set-ico" style="background:var(--green-l)">❓</div>
             <div class="set-text"><div class="set-name">Revoir le guide</div><div class="set-desc">Relancer le didacticiel</div></div>
+            <span style="color:var(--muted);font-size:14px">→</span>
+          </div>
+          <div class="set-row" onclick="signOut()" style="cursor:pointer">
+            <div class="set-ico" style="background:var(--red-l)">🚪</div>
+            <div class="set-text"><div class="set-name" style="color:var(--red)">Se déconnecter</div><div class="set-desc">Retour à l'écran de connexion</div></div>
             <span style="color:var(--muted);font-size:14px">→</span>
           </div>
         </div>
@@ -1614,14 +1648,16 @@ function setType(t,el){
   selCat=CATS[t][0].id;buildCats();
 }
 function selCatFn(id,el){selCat=id;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));el.classList.add('on');}
-function confirmSaisie(){
+async function confirmSaisie(){
   const amount=parseFloat(document.getElementById('s-amount').value);
   const desc=document.getElementById('s-desc').value.trim()||selCat;
   if(!amount||amount<=0){document.getElementById('s-amount').style.borderColor='var(--red)';return;}
   const cat=CATS[eType].find(c=>c.id===selCat)||CATS[eType][0];
   const today=new Date(),m=['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
-  entries.unshift({id:Date.now(),desc,cat:cat.id,ico:cat.ico,type:eType,amount,date:today.getDate()+' '+m[today.getMonth()]});
+  const entry={id:Date.now(),desc,cat:cat.id,ico:cat.ico,type:eType,amount,date:today.getDate()+' '+m[today.getMonth()]};
+  entries.unshift(entry);
   closeOv('ov-saisie');refresh();toast('✅ Opération ajoutée');
+  await saveEntry(entry);
 }
 
 // ══ TX ══
@@ -1706,9 +1742,11 @@ function deleteTx(id){
   if(!entry)return;
   entries=entries.filter(e=>e.id!==id);
   refresh();
-  showUndoToast(`🗑️ "${entry.desc}" supprimée`,()=>{
+  deleteEntryDB(id);
+  showUndoToast(`🗑️ "${entry.desc}" supprimée`,async()=>{
     entries.unshift(entry);
     refresh();
+    await saveEntry(entry);
   });
 }
 
@@ -1717,9 +1755,11 @@ function deleteFacture(id){
   if(!f)return;
   factures=factures.filter(x=>x.id!==id);
   renderFactures();
-  showUndoToast(`🗑️ Facture ${f.num} supprimée`,()=>{
+  deleteFactureDB(id);
+  showUndoToast(`🗑️ Facture ${f.num} supprimée`,async()=>{
     factures.unshift(f);
     renderFactures();
+    await saveFacture(f);
   });
 }
 
@@ -1803,7 +1843,7 @@ function calcF(){
   document.getElementById('fp-ttc').textContent=fmt(ttc,cur);
   document.getElementById('f-prev').style.display=ht>0?'block':'none';
 }
-function genFacture(){
+async function genFacture(){
   const client=document.getElementById('f-client').value.trim();
   if(!client){document.getElementById('f-client').focus();return;}
   const ht=parseFloat(document.getElementById('f-ht').value)||0;
@@ -1814,12 +1854,16 @@ function genFacture(){
   const desc=document.getElementById('f-desc').value||'Prestation';
   const now=new Date(),m=['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
   const dateStr=now.getDate()+' '+m[now.getMonth()];
-  const num='FA-2025-'+String(factNum).padStart(3,'0');factNum++;
-  factures.unshift({id:Date.now(),num,client,emetteur,desc,ht,tva,ttc,cur,date:dateStr,st:'En attente'});
-  entries.unshift({id:Date.now(),desc:num+' — '+client,cat:'Prestations',ico:'🧾',type:'rev',amount:ht,date:dateStr});
+  const num='FA-2026-'+String(factNum).padStart(3,'0');factNum++;
+  const facture={id:Date.now(),num,client,emetteur,desc,ht,tva,ttc,cur,date:dateStr,st:'En attente'};
+  const entry={id:Date.now()+1,desc:num+' — '+client,cat:'Prestations',ico:'🧾',type:'rev',amount:ht,date:dateStr};
+  factures.unshift(facture);
+  entries.unshift(entry);
   closeOv('ov-facture');
   renderFactures();
   refresh();toast('✅ Facture '+num+' créée · ajoutée aux revenus');
+  await saveFacture(facture);
+  await saveEntry(entry);
 }
 
 function renderFactures(){
@@ -1847,12 +1891,13 @@ function renderFactures(){
     </div>`).join('');
 }
 
-function payFacture(id){
+async function payFacture(id){
   const idx=factures.findIndex(f=>f.id===id);
   if(idx===-1)return;
   factures[idx].st='Payée';
   renderFactures();
   toast('✅ Facture marquée comme payée');
+  await updateFactureDB(id,{statut:'Payée'});
 }
 
 // ══ CHAT ══
@@ -2343,9 +2388,250 @@ function confirmScan(){
   }
 }
 
+// ══ SUPABASE ══
+const SUPA_URL = 'https://dbvdmnqwwddwiycvamnr.supabase.co';
+const SUPA_KEY = 'Sb_publiable_zmlqTdqK-4sxq941HRvNnw_kIZwUAbP';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+let authMode = 'login';
+
+// ── Auth tab switch ──
+function switchAuthTab(mode) {
+  authMode = mode;
+  const isLogin = mode === 'login';
+  document.getElementById('tab-login').style.background = isLogin ? '#00C897' : 'transparent';
+  document.getElementById('tab-login').style.color = isLogin ? '#000' : 'rgba(255,255,255,.5)';
+  document.getElementById('tab-signup').style.background = isLogin ? 'transparent' : '#00C897';
+  document.getElementById('tab-signup').style.color = isLogin ? 'rgba(255,255,255,.5)' : '#000';
+  document.getElementById('auth-btn').textContent = isLogin ? 'Se connecter →' : 'Créer mon compte →';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+// ── Handle login/signup ──
+async function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-btn');
+
+  if (!email || !password) {
+    errEl.textContent = 'Remplis tous les champs.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = '⏳ Chargement...';
+  btn.style.opacity = '.7';
+  errEl.style.display = 'none';
+
+  try {
+    let result;
+    if (authMode === 'login') {
+      result = await supa.auth.signInWithPassword({ email, password });
+    } else {
+      result = await supa.auth.signUp({ email, password });
+      if (!result.error && result.data.user) {
+        errEl.textContent = '✅ Compte créé ! Vérifie ton email pour confirmer.';
+        errEl.style.color = '#00C897';
+        errEl.style.display = 'block';
+        btn.textContent = 'Créer mon compte →';
+        btn.style.opacity = '1';
+        return;
+      }
+    }
+
+    if (result.error) {
+      const msgs = {
+        'Invalid login credentials': 'Email ou mot de passe incorrect.',
+        'Email not confirmed': 'Confirme ton email avant de te connecter.',
+        'User already registered': 'Un compte existe déjà avec cet email.',
+        'Password should be at least 6 characters': 'Mot de passe trop court (min. 6 caractères).',
+      };
+      errEl.textContent = msgs[result.error.message] || result.error.message;
+      errEl.style.color = '#FF6060';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Erreur de connexion. Réessaie.';
+    errEl.style.color = '#FF6060';
+    errEl.style.display = 'block';
+  }
+
+  btn.textContent = authMode === 'login' ? 'Se connecter →' : 'Créer mon compte →';
+  btn.style.opacity = '1';
+}
+
+// ── Reset password ──
+async function resetPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) {
+    document.getElementById('auth-error').textContent = 'Entre ton email d\'abord.';
+    document.getElementById('auth-error').style.color = '#FF6060';
+    document.getElementById('auth-error').style.display = 'block';
+    return;
+  }
+  await supa.auth.resetPasswordForEmail(email);
+  document.getElementById('auth-error').textContent = '✅ Email de réinitialisation envoyé !';
+  document.getElementById('auth-error').style.color = '#00C897';
+  document.getElementById('auth-error').style.display = 'block';
+}
+
+// ── Sign out ──
+async function signOut() {
+  await supa.auth.signOut();
+  currentUser = null;
+  entries = [];
+  factures.length = 0;
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ── Load user data ──
+async function loadUserData(userId) {
+  // Charger les opérations
+  const { data: ents } = await supa
+    .from('entries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (ents) {
+    entries = ents.map(e => ({
+      id: e.id,
+      desc: e.label,
+      cat: e.cat,
+      ico: e.ico || '📄',
+      type: e.type,
+      amount: parseFloat(e.amount),
+      date: e.date_op,
+    }));
+  }
+
+  // Charger les factures
+  const { data: facts } = await supa
+    .from('factures')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (facts) {
+    factures.length = 0;
+    facts.forEach(f => factures.push({
+      id: f.id,
+      num: f.num,
+      client: f.client,
+      emetteur: f.emetteur,
+      desc: f.label,
+      ht: parseFloat(f.ht),
+      tva: parseFloat(f.tva),
+      ttc: parseFloat(f.ttc),
+      cur: f.cur,
+      date: f.date_op,
+      st: f.statut,
+    }));
+  }
+
+  // Charger profil
+  const { data: profile } = await supa
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (profile) {
+    if (profile.pays) { country = profile.pays; }
+    if (profile.statut) { statut = profile.statut; }
+    if (profile.secteur) { secteur = profile.secteur; }
+  }
+
+  refresh();
+  renderFactures();
+}
+
+// ── Save entry to Supabase ──
+async function saveEntry(entry) {
+  if (!currentUser) return;
+  const { data } = await supa.from('entries').insert({
+    user_id: currentUser.id,
+    label: entry.desc,
+    cat: entry.cat,
+    ico: entry.ico,
+    type: entry.type,
+    amount: entry.amount,
+    date_op: entry.date,
+  }).select().single();
+  if (data) entry.id = data.id; // update local id with DB id
+}
+
+// ── Delete entry from Supabase ──
+async function deleteEntryDB(id) {
+  if (!currentUser) return;
+  await supa.from('entries').delete().eq('id', id);
+}
+
+// ── Save facture to Supabase ──
+async function saveFacture(f) {
+  if (!currentUser) return;
+  const { data } = await supa.from('factures').insert({
+    user_id: currentUser.id,
+    num: f.num,
+    client: f.client,
+    emetteur: f.emetteur,
+    label: f.desc,
+    ht: f.ht,
+    tva: f.tva,
+    ttc: f.ttc,
+    cur: f.cur,
+    date_op: f.date,
+    statut: f.st,
+  }).select().single();
+  if (data) f.id = data.id;
+}
+
+// ── Update facture status ──
+async function updateFactureDB(id, updates) {
+  if (!currentUser) return;
+  await supa.from('factures').update(updates).eq('id', id);
+}
+
+// ── Delete facture from Supabase ──
+async function deleteFactureDB(id) {
+  if (!currentUser) return;
+  await supa.from('factures').delete().eq('id', id);
+}
+
+// ── Save profile ──
+async function saveProfile() {
+  if (!currentUser) return;
+  await supa.from('profiles').update({
+    pays: country,
+    statut: statut,
+    secteur: secteur,
+  }).eq('id', currentUser.id);
+}
+
+// ── Auth state listener ──
+supa.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.user) {
+    currentUser = session.user;
+    document.getElementById('auth-screen').style.display = 'none';
+    await loadUserData(currentUser.id);
+  } else {
+    currentUser = null;
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+});
+
 // ══ INIT ══
 if(localStorage.getItem('fsk-ob')) document.getElementById('ob').style.display='none';
-initTheme();initGreet();buildCats();buildCantonSel();refresh();
+initTheme();initGreet();buildCats();buildCantonSel();
+// Auth check — Supabase gère via onAuthStateChange
+// Si pas de session → auth-screen visible (déjà affiché par défaut via CSS)
+supa.auth.getSession().then(({data:{session}})=>{
+  if(!session){
+    document.getElementById('auth-screen').style.display='flex';
+  }
+});
 </script>
 </body>
 </html>
