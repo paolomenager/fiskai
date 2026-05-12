@@ -694,7 +694,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
         </svg>
         <div>
           <div style="font-size:15px;font-weight:900;letter-spacing:-.5px;line-height:1.1;color:var(--dark)">fiskai</div>
-          <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.3px" id="greet">Bonjour 👋</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.3px" id="greet">Bonjour 👋</div>
+            <div id="country-badge" style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.3px;display:flex;align-items:center;gap:2px">· <span id="country-flag">🇫🇷</span> <span id="country-name">France</span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -860,10 +863,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;heigh
       <div class="bloc">
         <div class="bloc-title">⚙️ Paramètres</div>
         <div class="card">
-          <div class="set-row" onclick="toggleCountry()">
-            <div class="set-ico" style="background:var(--blue-l)">🌍</div>
-            <div class="set-text"><div class="set-name" id="country-lbl">Pays : France 🇫🇷</div><div class="set-desc">Basculer France / Suisse</div></div>
-            <span style="color:var(--muted);font-size:14px">→</span>
+          <div class="set-row" style="cursor:default">
+            <div class="set-ico" style="background:var(--blue-l)" id="country-flag-set">🇫🇷</div>
+            <div class="set-text">
+              <div class="set-name" id="country-lbl">Pays : France 🇫🇷</div>
+              <div class="set-desc">Défini à l'inscription · Non modifiable</div>
+            </div>
           </div>
           <div class="set-row">
             <div class="set-ico" style="background:var(--amber-l)">🌙</div>
@@ -1365,8 +1370,12 @@ const CFGS={
 function getCfg(k){return CFGS[k]||CFGS.sasu;}
 function getCA(){return entries.filter(e=>e.type==='rev').reduce((s,e)=>s+e.amount,0);}
 function getCH(){return entries.filter(e=>e.type==='ch').reduce((s,e)=>s+e.amount,0);}
-function fmt(n,c){const cur=c||(statut.endsWith('_ch')?'CHF':'€');return Math.round(Math.abs(n)).toLocaleString('fr-FR')+'\u202f'+cur;}
-function fmtK(n,cur){const c=cur||(statut.endsWith('_ch')?'CHF':'€');return n>=1000?(n/1000).toFixed(0)+'k\u202f'+c:n+'\u202f'+c;}
+function fmt(n,c){
+  // Priorité : devise explicite → pays → statut
+  const cur=c||(country==='ch'?'CHF':(statut.endsWith('_ch')?'CHF':'€'));
+  return Math.round(Math.abs(n)).toLocaleString('fr-FR')+'\u202f'+cur;
+}
+function fmtK(n,cur){const c=cur||(country==='ch'?'CHF':(statut.endsWith('_ch')?'CHF':'€'));return n>=1000?(n/1000).toFixed(0)+'k\u202f'+c:n+'\u202f'+c;}
 function pct(n){return Math.round(n)+'%';}
 
 // ══ DONNÉES EXEMPLES PAR SECTEUR (pour pré-remplir le simulateur) ══
@@ -2687,11 +2696,64 @@ supa.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
+// ══ DÉTECTION PAYS VIA URL ══
+// fiskai.fr/app.html?pays=fr  →  mode France
+// fiskai.ch/app.html?pays=ch  →  mode Suisse
+function detectPays(){
+  const params = new URLSearchParams(window.location.search);
+  const paysParam = params.get('pays');
+  if(paysParam === 'ch'){
+    country = 'ch';
+    statut = 'sarl_ch';
+  } else if(paysParam === 'fr'){
+    country = 'fr';
+    statut = 'sasu';
+  }
+  // Mise à jour du badge pays dans le header
+  updateCountryBadge();
+}
+
+function updateCountryBadge(){
+  const isCH = country === 'ch';
+  const flag = isCH ? '🇨🇭' : '🇫🇷';
+  const name = isCH ? 'Suisse' : 'France';
+
+  // Badge header
+  const flagEl = document.getElementById('country-flag');
+  const nameEl = document.getElementById('country-name');
+  if(flagEl) flagEl.textContent = flag;
+  if(nameEl) nameEl.textContent = name;
+
+  // Paramètres
+  const lbl = document.getElementById('country-lbl');
+  if(lbl) lbl.textContent = `Pays : ${name} ${flag}`;
+  const flagSet = document.getElementById('country-flag-set');
+  if(flagSet) flagSet.textContent = flag;
+
+  // Sélecteur statut — filtrer selon pays
+  const sel = document.getElementById('sel-statut');
+  if(sel){
+    const optgroups = sel.querySelectorAll('optgroup');
+    optgroups.forEach(og => {
+      if(isCH){
+        og.style.display = og.label.includes('🇨🇭') ? '' : 'none';
+      } else {
+        og.style.display = og.label.includes('🇫🇷') ? '' : 'none';
+      }
+    });
+    // Sélectionner le bon statut par défaut
+    sel.value = statut;
+  }
+
+  // Canton bloc
+  const cantonBloc = document.getElementById('canton-bloc');
+  if(cantonBloc) cantonBloc.style.display = isCH ? 'block' : 'none';
+}
+
 // ══ INIT ══
 if(localStorage.getItem('fsk-ob')) document.getElementById('ob').style.display='none';
 initTheme();initGreet();buildCats();buildCantonSel();
-// Auth check — Supabase gère via onAuthStateChange
-// Si pas de session → auth-screen visible (déjà affiché par défaut via CSS)
+detectPays(); // Détecte le pays via URL param
 supa.auth.getSession().then(({data:{session}})=>{
   if(!session){
     document.getElementById('auth-screen').style.display='flex';
