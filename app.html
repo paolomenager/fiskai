@@ -957,26 +957,48 @@ const SECT_TVA={btp:0.20,tech:0.20,commerce:0.20,resto:0.10,sante:0.10,immo:0.20
 // ══ MOTEUR FISCAL PRÉCIS ══
 
 // IR France — barème 2024 (parts 1)
+// IR France — Barème 2025 (revenus 2024, déclaration 2025)
+// Seuils revalorisés de +1.8% vs 2024
 function irFR(r){
   if(r<=0)return 0;
-  const t=[[11294,0],[28797,.11],[82341,.30],[177106,.41],[Infinity,.45]];
+  // Tranches 2025 : 0% / 11% / 30% / 41% / 45%
+  const t=[[11497,0],[29315,.11],[83823,.30],[180294,.41],[Infinity,.45]];
   let ir=0,p=0;
   for(const[pl,tx]of t){if(r<=p)break;ir+=(Math.min(r,pl)-p)*tx;p=pl;}
-  return Math.max(0,ir);
+  return Math.max(0,Math.floor(ir));
 }
 
-// IFD Suisse — barème fédéral 2024
+// Abattements Micro-entreprise France
+const MICRO_ABATTEMENTS = {
+  'bic_vente':    0.71,  // Micro-BIC commerce/vente/hébergement
+  'bic_service':  0.50,  // Micro-BIC prestation de services commerciale
+  'bnc':          0.34,  // Micro-BNC professions libérales
+  'ae_service':   0.34,  // Auto-entrepreneur services (BNC)
+  'ae_commerce':  0.71,  // Auto-entrepreneur commerce
+  'ae_artisan':   0.50,  // Auto-entrepreneur artisan
+};
+
+function abattementMicro(type) {
+  return MICRO_ABATTEMENTS[type] || 0.34;
+}
+
+// IFD Suisse — barème fédéral 2024 (AFC)
+// Source : Administration fédérale des contributions
+// Revenus en CHF, impôt en CHF
 function ifdCH(r){
-  if(r<=17800)return 0;
-  if(r<=31600)return(r-17800)*.077;
-  if(r<=41400)return 1063+(r-31600)*.088;
-  if(r<=55200)return 1925+(r-41400)*.116;
-  if(r<=72500)return 3527+(r-55200)*.129;
-  if(r<=78100)return 5760+(r-72500)*.132;
-  if(r<=103600)return 6499+(r-78100)*.133;
-  if(r<=134600)return 9892+(r-103600)*.143;
-  if(r<=176000)return 14323+(r-134600)*.150;
-  return 20533+(r-176000)*.115;
+  if(r<=17800) return 0;
+  // Barème officiel AFC 2024 — tranches cumulatives
+  let t=0;
+  if(r>17800)  t+=(Math.min(r,31600)-17800)*0.0077;
+  if(r>31600)  t+=(Math.min(r,41400)-31600)*0.0088;
+  if(r>41400)  t+=(Math.min(r,55200)-41400)*0.0264;
+  if(r>55200)  t+=(Math.min(r,72500)-55200)*0.0297;
+  if(r>72500)  t+=(Math.min(r,78100)-72500)*0.0594;
+  if(r>78100)  t+=(Math.min(r,103600)-78100)*0.0616;
+  if(r>103600) t+=(Math.min(r,134600)-103600)*0.0825;
+  if(r>134600) t+=(Math.min(r,176000)-134600)*0.0880;
+  if(r>176000) t+=(r-176000)*0.1132;
+  return Math.floor(t);
 }
 
 // IS France — avec taux réduit PME conditionnel
@@ -985,9 +1007,11 @@ function isFR(ben, ca, eligibleTauxReduit=true){
   if(ben<=0)return 0;
   if(eligibleTauxReduit && ca<10000000){
     // Taux réduit 15% jusqu'à 42 500€ puis 25%
-    return ben<=42500 ? ben*.15 : 42500*.15+(ben-42500)*.25;
+    // Math.floor pour éviter non-monotonie au seuil exact
+    if(ben<=42500) return Math.floor(ben*0.15);
+    return Math.floor(42500*0.15+(ben-42500)*0.25);
   }
-  return ben*.25; // taux plein
+  return Math.floor(ben*0.25); // taux plein
 }
 
 // CVAE France — supprimée en 2024, mais CFE reste
@@ -1202,26 +1226,30 @@ const CFGS={
 
   sel:{n:'SEL/SELARL',e:'⚕️',c:'€',calc(ca,ch,rem){
     // SEL = société d'exercice libéral
-    // Cotisations : CARMF (médecins), CARPIMKO (paramédicaux), CAVEC (experts-comptables)...
-    // Taux moyen TNS libéral ~43-46%
-    const cot=rem*.44; // CARPIMKO/CARMF ~44% en moyenne
-    const ben=Math.max(0,ca-ch-rem-cot);
-    const is=isFR(ben,ca,eligibleTauxReduit(ca));
-    const div=Math.max(0,ben-is);
-    const ft=div*.30;
-    const ir=irFR(rem);
-    const tot=is+cot+ft+ir;
-    const net=rem-ir-cot+div-ft;
+    // Cotisations ordinales variables selon profession :
+    // CARMF (médecins) ~43% | CARPIMKO (paramédicaux) ~42% | CAVEC (experts-comptables) ~25%
+    // CNBF (avocats) ~14% | CIPAV (autres libéraux) ~25%
+    // On utilise 43% comme estimation moyenne prudente
+    // ⚠️ L'utilisateur doit vérifier avec sa caisse spécifique
+    const cotTaux = 0.43;
+    const cot = Math.floor(rem * cotTaux);
+    const ben = Math.max(0, ca-ch-rem-cot);
+    const is = isFR(ben, ca, eligibleTauxReduit(ca));
+    const div = Math.max(0, ben-is);
+    const ft = Math.floor(div*0.30);
+    const ir = irFR(rem);
+    const tot = is+cot+ft+ir;
+    const net = rem-ir-cot+div-ft;
     return{net,tot,cot,is,ir,txEff:ca>0?Math.round(tot/ca*100):0,lines:[
       {l:'Honoraires HT',v:ca},
       {l:'Charges cabinet',v:-ch},
       {l:'Rémunération',v:-rem},
-      {l:'Cotisations CARMF/CARPIMKO (~44%)',v:-cot,cls:'db'},
+      {l:'Cotisations ordinales (~43% estimé)',v:-cot,cls:'db'},
       {l:'Résultat avant IS',v:ben},
       {l:'IS (15/25%)',v:-is,cls:'db'},
       {l:'Flat tax dividendes (30%)',v:-ft,cls:'db'},
       {l:'IR sur rémunération',v:-ir,cls:'db'},
-      {l:'Revenu net',v:net,cls:'cr'},
+      {l:'Revenu net estimé',v:net,cls:'cr'},
     ]};
   }},
 
@@ -1546,7 +1574,14 @@ function refresh(){
   const alerts=[];
   const tvaRate=SECT_TVA[secteur]||0.20;
   const tvaMois=Math.max(0,(getCA()-getCH())*tvaRate);
-  if(tvaMois>0) alerts.push({cls:'amber',ico:'📅',title:`TVA à reverser : ${fmt(tvaMois,cur)}`,sub:'Échéance le '+(country==='ch'?'30 du mois suivant':'15 du mois'),tag:'Ce mois',tagBg:'var(--amber)'});
+  // FIX — Alerte franchise TVA CH sous 100 000 CHF
+  if(country==='ch' && ca < 100000){
+    alerts.push({cls:'green',ico:'✅',title:'Franchise TVA suisse active',sub:`CA ${fmt(ca,'CHF')} < 100 000 CHF — pas de TVA due`,tag:'Info',tagBg:'var(--green)'});
+  } else if(country==='ch' && ca >= 100000 && ca < 110000){
+    alerts.push({cls:'amber',ico:'⚠️',title:'Seuil TVA CH bientôt atteint',sub:'Dès 100 000 CHF de CA → assujettissement obligatoire',tag:'Attention',tagBg:'var(--amber)'});
+  } else if(tvaMois>0){
+    alerts.push({cls:'amber',ico:'📅',title:`TVA à reverser : ${fmt(tvaMois,cur)}`,sub:'Échéance le '+(country==='ch'?'30 du mois suivant':'15 du mois'),tag:'Ce mois',tagBg:'var(--amber)'});
+  }
   if(statut==='ae'&&ca>72000) alerts.push({cls:'red',ico:'⚡',title:'Seuil micro-entreprise dépassé',sub:'Passe en société pour optimiser',tag:'Urgent',tagBg:'var(--red)'});
   if(r.tot/Math.max(ca,1)>0.45) alerts.push({cls:'red',ico:'🚨',title:`Taux de prélèvement élevé (${pct(r.tot/Math.max(ca,1)*100)})`,sub:'Voir mes conseils pour optimiser',tag:'Attention',tagBg:'var(--red)'});
   document.getElementById('alertes-wrap').innerHTML=alerts.map(a=>`
@@ -1609,14 +1644,44 @@ function refreshTVA(cur,rate){
   const ca=getCA(),ch=getCH();
   const isCH=country==='ch';
   const r=rate||SECT_TVA[secteur]||0.20;
+
+  // FIX — Seuil TVA CH : en dessous de 100 000 CHF → franchise TVA
+  // Au seuil exact 100 000 CHF → assujetti (dès que le seuil est atteint)
+  const SEUIL_TVA_CH=100000;
+  const sousSeuil=isCH && ca<SEUIL_TVA_CH;
+  const auSeuil=isCH && ca===SEUIL_TVA_CH;
+
+  if(sousSeuil){
+    // Franchise TVA — pas de TVA due
+    document.getElementById('tva-amt').textContent='Franchise';
+    document.getElementById('tva-dead').textContent='Non assujetti';
+    document.getElementById('tva-detail').innerHTML=`
+      <div class="sr"><span class="sr-n" style="color:var(--muted);font-weight:700">CA annuel</span><span class="sr-v">${fmt(ca,'CHF')}</span></div>
+      <div class="sr"><span class="sr-n" style="color:var(--amber);font-weight:700">Seuil TVA CH</span><span class="sr-v" style="color:var(--amber)">100 000 CHF</span></div>
+      <div class="sr"><span class="sr-n" style="color:var(--green-d);font-weight:700">Statut</span><span class="sr-v" style="color:var(--green-d)">Franchise TVA ✓</span></div>
+      <div style="font-size:10px;color:var(--muted);padding:8px 0;line-height:1.5">En dessous de 100 000 CHF de CA, vous bénéficiez de la franchise TVA. Dès que vous dépassez ce seuil, vous devrez vous assujettir.</div>`;
+    return;
+  }
+
   const tvaCol=ca*r,tvaDed=ch*r,tvaN=Math.max(0,tvaCol-tvaDed);
   document.getElementById('tva-amt').textContent=fmt(tvaN,cur||(isCH?'CHF':'€'));
   document.getElementById('tva-dead').textContent=isCH?'le 30 du mois suivant':'le 15 du mois';
   document.getElementById('tva-detail').innerHTML=[
-    {l:'CA HT',v:fmt(ca,cur)},{l:`TVA collectée (${Math.round(r*100)}%)`,v:fmt(tvaCol,cur)},{l:'TVA déductible',v:'−'+fmt(tvaDed,cur),cls:'cr'},{l:'À reverser',v:fmt(tvaN,cur),cls:'am'}
+    {l:'CA HT',v:fmt(ca,cur)},
+    {l:`TVA collectée (${Math.round(r*100)}%)`,v:fmt(tvaCol,cur)},
+    {l:'TVA déductible',v:'−'+fmt(tvaDed,cur),cls:'cr'},
+    {l:'À reverser',v:fmt(tvaN,cur),cls:'am'}
   ].map(l=>`<div class="sr"><span class="sr-n" style="color:var(--muted);font-weight:700">${l.l}</span><span class="sr-v ${l.cls||''}">${l.v}</span></div>`).join('')+
-  (isCH?`<div class="sr"><span style="color:var(--muted);font-weight:700">Taux normal CH</span><span class="sr-v">8.1%</span></div><div class="sr"><span style="color:var(--muted);font-weight:700">Taux réduit CH</span><span class="sr-v">2.6%</span></div>`:
-  `<div class="sr"><span style="color:var(--muted);font-weight:700">Taux services</span><span class="sr-v">20%</span></div><div class="sr"><span style="color:var(--muted);font-weight:700">Restauration</span><span class="sr-v">10%</span></div><div class="sr"><span style="color:var(--muted);font-weight:700">Alimentaire</span><span class="sr-v">5.5%</span></div>`);
+  (isCH?`
+    <div class="sr"><span style="color:var(--muted);font-weight:700">Taux normal CH</span><span class="sr-v">8.1%</span></div>
+    <div class="sr"><span style="color:var(--muted);font-weight:700">Taux réduit CH</span><span class="sr-v">2.6%</span></div>
+    <div class="sr"><span style="color:var(--muted);font-weight:700">Hébergement CH</span><span class="sr-v">3.8%</span></div>
+    <div style="font-size:10px;color:var(--muted);padding:6px 0;line-height:1.5">💡 Impôt anticipé : les dividendes suisses sont soumis à une retenue de 35%, récupérable via votre déclaration d'impôt annuelle.</div>
+    <div style="font-size:10px;color:var(--muted);padding:2px 0;line-height:1.5">📊 LPP : cotisations 2ème pilier variables selon votre caisse de pension. Seuil d'entrée : 22 050 CHF/an.</div>
+    <div style="font-size:9px;color:rgba(var(--muted-rgb),.6);padding:6px 0;font-style:italic">Données indicatives 2024/2025 — taux cantonaux susceptibles de varier.</div>`:
+  `<div class="sr"><span style="color:var(--muted);font-weight:700">Taux services</span><span class="sr-v">20%</span></div>
+   <div class="sr"><span style="color:var(--muted);font-weight:700">Restauration</span><span class="sr-v">10%</span></div>
+   <div class="sr"><span style="color:var(--muted);font-weight:700">Alimentaire</span><span class="sr-v">5.5%</span></div>`);
 }
 
 function refreshStatuts(ca,ch){
