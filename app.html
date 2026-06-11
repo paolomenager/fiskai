@@ -2003,7 +2003,7 @@ async function sendChat(){
   chatHist.push({role:'user',content:`Contexte: ${statut} · ${country==='ch'?'Suisse':'France'} · Secteur: ${secteur} · CA~${fmt(getCA())} · Charges~${fmt(getCH())}. Question: ${msg}`});
   const tp=addTyping();
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:SYS,messages:chatHist})});
+    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:SYS,messages:chatHist})});
     const data=await res.json();
     const reply=data.content?.[0]?.text||'Désolé, une erreur.';
     tp.remove();addBubble('ai',reply);chatHist.push({role:'assistant',content:reply});
@@ -2356,9 +2356,9 @@ Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`;
       ]
     }];
 
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch('/api/claude',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:500,
