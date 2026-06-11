@@ -2350,11 +2350,13 @@ Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`;
   try{
     const messages=[{
       role:'user',
-      content:[
-       console.log('MIME TYPE:', scanMime);
-        {type:'image',source:{type:'base64',media_type:scanMime==='image/jpg'?'image/jpeg':scanMime,data:scanB64}},
-        {type:'text',text:prompt}
-      ]
+      content: (() => {
+  console.log('MIME TYPE:', scanMime);
+  return [
+    {type:'image',source:{type:'base64',media_type:scanMime==='image/jpg'?'image/jpeg':scanMime,data:scanB64}},
+    {type:'text',text:prompt}
+  ];
+})()
     }];
 
     const res=await fetch('/api/claude',{
