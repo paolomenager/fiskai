@@ -2353,7 +2353,7 @@ Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`;
       content: (() => {
   console.log('MIME TYPE:', scanMime);
   return [
-    {type:'image',source:{type:'base64',media_type:scanMime==='image/jpg'?'image/jpeg':scanMime,data:scanB64}},
+    ...(scanMime==='application/pdf' ? [] : [{type:'image',source:{type:'base64',media_type:scanMime==='image/jpg'?'image/jpeg':scanMime,data:scanB64}}]),
     {type:'text',text:prompt}
   ];
 })()
