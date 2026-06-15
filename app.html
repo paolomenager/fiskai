@@ -2283,7 +2283,7 @@ function handleScanFile(input){
 }
 
 function processScanFile(file){
-  const maxSize=10*1024*1024; // 10MB max
+  const maxSize=4*1024*1024; // 4MB max
   if(file.size>maxSize){
     showScanError('Fichier trop lourd (max 10 Mo). Compresse l\'image et réessaie.');
     return;
