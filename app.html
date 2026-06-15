@@ -776,6 +776,27 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
       <!-- Alertes -->
       <div id="alertes-wrap"></div>
 
+      <!-- Mini Bilan -->
+      <div class="sec mt8"><div class="sec-t">Mon bilan réel</div><div class="sec-a" onclick="goTab('tout')">Détail</div></div>
+      <div class="card" id="home-bilan">
+        <div class="sr">
+          <div class="sr-left"><div class="sr-ico" style="background:var(--green-l)">💚</div><div><div class="sr-n">Revenus encaissés</div><div class="sr-s">Cette année</div></div></div>
+          <div class="sr-v cr" id="hb-ca">—</div>
+        </div>
+        <div class="sr">
+          <div class="sr-left"><div class="sr-ico" style="background:var(--red-l)">💸</div><div><div class="sr-n">Charges payées</div><div class="sr-s">Cette année</div></div></div>
+          <div class="sr-v db" id="hb-ch">—</div>
+        </div>
+        <div class="sr">
+          <div class="sr-left"><div class="sr-ico" style="background:var(--amber-l)">🧾</div><div><div class="sr-n">Impôts estimés</div><div class="sr-s">Sur tes vraies données</div></div></div>
+          <div class="sr-v am" id="hb-imp">—</div>
+        </div>
+        <div class="sr" style="border-top:2px solid var(--border)">
+          <div class="sr-left"><div class="sr-ico" style="background:var(--blue-l)">💰</div><div><div class="sr-n" style="font-weight:900">Résultat net</div><div class="sr-s">Ce que tu gardes vraiment</div></div></div>
+          <div class="sr-v cr" id="hb-net" style="font-size:16px;font-weight:900">—</div>
+        </div>
+      </div>
+
       <!-- Dernières 3 opérations -->
       <div class="sec mt8"><div class="sec-t">Dernières opérations</div><div class="sec-a" onclick="goTab('tout')">Voir tout</div></div>
       <div class="card"><div id="tx-home"></div></div>
@@ -820,7 +841,7 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
               <input type="range" min="0" max="200000" step="2000" value="30000" id="sl-ch" oninput="onSlider()">
             </div>
             <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:4px;margin-bottom:12px">
-              💡 La rémunération est calculée automatiquement selon ton statut
+              💡 Simulation · La rémunération est auto-calculée selon ton statut — pour tes vraies données, vois le bilan en haut
             </div>
           </div>
           <div id="sim-detail"></div>
@@ -1564,12 +1585,28 @@ function refresh(){
   // Auto-detect secteur uniquement si l'utilisateur n'a pas choisi de secteur à l'onboarding
   if(secteur==='autre'&&entries.length>=5) secteur=detectSecteur();
 
-  // Hero
+  // Hero (utilise valeurs réelles si dispo, sinon défaut)
   document.getElementById('h-net').textContent=fmt(r.net,cur);
   document.getElementById('h-ca').textContent=fmt(ca,cur);
   document.getElementById('h-ch').textContent=fmt(ch,cur);
   document.getElementById('h-imp').textContent=fmt(r.tot,cur);
   document.getElementById('h-sub').textContent=`${cfg.n} · ${country==='ch'?'🇨🇭 Suisse':'🇫🇷 France'}`;
+
+  // Mini bilan accueil — toujours sur vraies données
+  const bilanCA=getCA(), bilanCH=getCH();
+  const bilanR=cfg.calc(bilanCA>0?bilanCA:ca, bilanCH>0?bilanCH:ch, bilanCA>0?Math.min((bilanCA-bilanCH)*.45,120000):Math.min((ca-ch)*.45,120000));
+  const hbCa=document.getElementById('hb-ca');
+  const hbCh=document.getElementById('hb-ch');
+  const hbImp=document.getElementById('hb-imp');
+  const hbNet=document.getElementById('hb-net');
+  if(hbCa){
+    hbCa.textContent=fmt(bilanCA,cur);
+    hbCh.textContent=fmt(bilanCH,cur);
+    hbImp.textContent=fmt(bilanR.tot,cur);
+    hbNet.textContent=fmt(bilanR.net,cur);
+    // Colorer selon résultat
+    hbNet.style.color=bilanR.net>0?'var(--green)':'var(--red)';
+  }
 
   // Score
   const score=Math.min(100,Math.max(20,Math.round(50+(r.net/Math.max(ca,1))*60-(r.tot/Math.max(ca,1))*20)));
@@ -2031,20 +2068,52 @@ async function payFacture(id){
 }
 
 // ══ CHAT ══
-const SYS=`Tu es Fiskai, un expert-comptable et conseiller fiscal spécialisé France et Suisse. Tu es précis, concret et bienveillant.
+const SYS=`Tu es Fiskai, expert-comptable et conseiller fiscal pour indépendants, professions libérales et TPE/PME en France et Suisse.
 
-RÈGLES STRICTES :
-- Réponds TOUJOURS en français
-- Maximum 3 paragraphes courts et clairs
-- Donne des chiffres précis quand tu les connais (taux, plafonds, délais)
-- Propose toujours une action concrète à la fin
-- Si la question dépasse ton périmètre, dis-le honnêtement et suggère un expert
+RÈGLES :
+- Réponds en français, max 3 paragraphes courts
+- Chiffres précis (taux, plafonds, délais)
+- Action concrète à la fin
+- Si hors périmètre, suggère un expert
 
-TU MAÎTRISES :
-France : IS (15%/25%), IR, flat tax 30%, TVA (20%/10%/5.5%/2.1%), cotisations URSSAF, SCI IR/IS, SEL/SELARL, SASU, EURL, auto-entreprise (BIC/BNC), PER, loi Madelin, déficit foncier, amortissements, CFE, CET
-Suisse : IS cantonal (11.5% Zoug → 24.2% Genève), AVS/AI/APG, TVA AFC (8.1%/2.6%/3.8%), Pilier 3a, Sàrl, SA, indépendant, imposition à la dépense, impôt anticipé 35%
+STATUTS ET FISCALITÉ QUE TU CONNAIS PARFAITEMENT :
 
-Tu adaptes tes conseils au pays, statut et secteur de l'utilisateur (injectés dynamiquement).`;
+🇫🇷 FRANCE :
+• Auto-entrepreneur (BIC vente 71%, BIC services 50%, BNC libéral 34%) — cotisations 12.8% à 22.1%
+• EURL/SARL — gérant TNS, cotisations ~42% (maladie, retraite, prévoyance, CSG)
+• SASU/SAS — président assimilé salarié, charges patronales 42% + salariales 23%
+• SA — même régime que SASU
+• SEL/SELARL — professions libérales réglementées (médecin, avocat, kiné, notaire, expert-comptable, architecte, pharmacien...) — loi Madelin, CARMF, CAVOM, CNBF, CARPIMKO selon profession
+• SCI à l'IR — revenus fonciers, déficit 10 700€/an, PS 17.2%
+• SCI à l'IS — amortissement 3%/an, flat tax dividendes 30%
+• IS France : 15% ≤42 500€ puis 25% (PME éligibles CA<10M€)
+• IR : tranches 0%/11%/30%/41%/45% (barème 2025)
+• TVA : 20% normal, 10% réduit, 5.5% alimentaire, 2.1% presse, 0% exonéré
+• PER : déductible jusqu'à 10% revenus pro (max 35 194€/an)
+• Loi Madelin : mutuelle, prévoyance, retraite déductibles pour TNS
+• CFE, CVAE supprimée 2024, cotisation foncière entreprises
+• Micro-fiscal et micro-social AE
+
+🇨🇭 SUISSE :
+• Sàrl/SA — IS cantonal (Zoug 11.5% → Genève 24.2%) + IFD fédéral
+• Indépendant — AVS/AI/APG ~10.6% employeur + salarié, TVA AFC 8.1%/2.6%/3.8%
+• Pilier 3a : déductible 7 056 CHF/an (salarié) ou 20% revenu (indép., max 35 280 CHF)
+• Sàrl immobilière — amortissement 4%/an, intérêts hypothécaires déductibles
+• Impôt anticipé 35% sur dividendes (remboursable si déclaré)
+• Choix du canton : optimisation IS possible
+
+PROFESSIONS LIBÉRALES (priorité si secteur=sante ou juridique) :
+- Médecin, chirurgien : CARMF, dépassements honoraires, secteur 1/2/3
+- Avocat : CNBF, TVA sur honoraires, BNC
+- Kiné, ostéo, infirmier : CARPIMKO, exonération TVA soins
+- Pharmacien : SEL obligatoire, TVA médicaments 2.1%/10%
+- Expert-comptable, notaire, architecte : cotisations ordinales déductibles
+- Vétérinaire : TVA mixte (soins/vente)
+
+CONTEXTE UTILISATEUR (adapte TOUS tes conseils à ça) :
+- Pays : PAYS_USER
+- Statut juridique : STATUT_USER  
+- Secteur d'activité : SECTEUR_USER`;
 async function sendChat(){
   const inp=document.getElementById('chat-in');
   const msg=inp.value.trim();if(!msg)return;
