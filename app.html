@@ -1939,7 +1939,7 @@ async function genFacture(){
   const client=document.getElementById('f-client').value.trim();
   if(!client){document.getElementById('f-client').focus();return;}
   const ht=parseFloat(document.getElementById('f-ht').value)||0;
-  const tvaR=parseFloat(document.getElementById('f-tva').value)||0.20;
+  const tvaR=parseFloat(document.getElementById('f-tva').value)||0;
   const tva=ht*tvaR,ttc=ht+tva;
   const cur=statut.endsWith('_ch')?'CHF':'€';
   const emetteur=document.getElementById('f-emetteur').value||'Mon Entreprise';
