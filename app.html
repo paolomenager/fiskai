@@ -2308,9 +2308,9 @@ function handleScanFile(input){
 }
 
 function processScanFile(file){
-  const maxSize=4*1024*1024; // 4MB max
+  const maxSize=4*1024*1024;
   if(file.size>maxSize){
-    showScanError('Fichier trop lourd (max 10 Mo). Compresse l\'image et réessaie.');
+    showScanError('Fichier trop lourd (max 4 Mo). Compresse l\'image et réessaie.');
     return;
   }
   const allowed=['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
@@ -2321,45 +2321,27 @@ function processScanFile(file){
   scanMime=file.type;
   const reader=new FileReader();
   reader.onload=async e=>{
-  const result=e.target.result;
-  // Compresser si image
-  if(file.type !== 'application/pdf') {
-    await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const max = 800;
-        let w = img.width, h = img.height;
-        if(w > max){ h = h*max/w; w = max; }
-        if(h > max){ w = w*max/h; h = max; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img,0,0,w,h);
-        scanB64 = canvas.toDataURL('image/jpeg',0.5).split(',')[1];
-        scanMime = 'image/jpeg';
-        resolve();
-      };
-      img.src = result;
-    });
-  } else {
-    scanB64 = result.split(',')[1];
-  }
-  // Afficher preview
-  document.getElementById('scan-drop').style.display='none';
-  document.getElementById('scan-preview').style.display='block';
-  if(file.type==='application/pdf'){
-    document.getElementById('scan-img').style.display='none';
-    document.getElementById('scan-pdf-preview').style.display='block';
-    document.getElementById('scan-pdf-name').textContent=file.name;
-  } else {
-    document.getElementById('scan-img').style.display='block';
-    document.getElementById('scan-img').src=result;
-    document.getElementById('scan-pdf-preview').style.display='none';
-  }
-  analyseDocument();
-};
-  scanB64 = result.split(',')[1];
-}
-    // Afficher preview
+    const result=e.target.result;
+    if(file.type !== 'application/pdf'){
+      await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const max = 800;
+          let w = img.width, h = img.height;
+          if(w > max){ h = h*max/w; w = max; }
+          if(h > max){ w = w*max/h; h = max; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          scanB64 = canvas.toDataURL('image/jpeg',0.5).split(',')[1];
+          scanMime = 'image/jpeg';
+          resolve();
+        };
+        img.src = result;
+      });
+    } else {
+      scanB64 = result.split(',')[1];
+    }
     document.getElementById('scan-drop').style.display='none';
     document.getElementById('scan-preview').style.display='block';
     if(file.type==='application/pdf'){
@@ -2371,9 +2353,8 @@ function processScanFile(file){
       document.getElementById('scan-img').src=result;
       document.getElementById('scan-pdf-preview').style.display='none';
     }
-    // Lancer l'analyse IA
     analyseDocument();
-  }
+  };
   reader.readAsDataURL(file);
 }
 
