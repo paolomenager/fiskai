@@ -2348,16 +2348,14 @@ Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`
 Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`;
 
   try{
-    const messages=[{
-      role:'user',
-      content: (() => {
-  console.log('MIME TYPE:', scanMime);
-  return [
-    ...(scanMime==='application/pdf' ? [] : [{type:'image',source:{type:'base64',media_type:scanMime==='image/jpg'?'image/jpeg':scanMime,data:scanB64}}]),
-    {type:'text',text:prompt}
-  ];
-})()
-    }];
+    const mime = scanMime === 'image/jpg' ? 'image/jpeg' : scanMime;
+const contentArr = scanMime === 'application/pdf'
+  ? [{type:'text',text:prompt}]
+  : [{type:'image',source:{type:'base64',media_type:mime,data:scanB64}},{type:'text',text:prompt}];
+const messages=[{
+  role:'user',
+  content: contentArr
+}];
 
     const res=await fetch('/api/claude',{
       method:'POST',
