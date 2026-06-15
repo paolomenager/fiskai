@@ -661,7 +661,7 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
 </div>
 
 <!-- LOGIN SCREEN -->
-<div id="auth-screen" style="position:fixed;inset:0;background:#0A0A0F;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;overflow-y:auto">
+<div id="auth-screen" style="position:fixed;inset:0;background:#0A0A0F;z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;overflow-y:auto">
   <svg width="56" height="56" viewBox="0 0 34 34" fill="none" style="margin-bottom:16px">
     <rect width="34" height="34" rx="9" fill="#00C897"/>
     <rect x="10" y="9" width="4" height="16" rx="1.5" fill="#0A0A0F"/>
@@ -800,20 +800,28 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
       <div class="bloc">
         <div class="bloc-title">📊 Simulateur d'impôts</div>
         <div class="sim-hero">
-          <div class="sh-lbl">Impôts & charges estimés</div>
-          <div class="sh-val" id="sim-tot">—</div>
-          <div class="sim-sub-lbl" id="sim-sub">sur ton CA annuel</div>
+          <div class="sh-lbl">Tu gardes estimé</div>
+          <div class="sh-val" id="sim-net">—</div>
+          <div class="sim-sub-lbl" id="sim-sub">après impôts & charges</div>
           <div class="sh-row">
-            <div class="sh-item"><div class="sh-il">Net</div><div class="sh-iv" id="sim-net">—</div></div>
+            <div class="sh-item"><div class="sh-il">Impôts</div><div class="sh-iv" id="sim-tot">—</div></div>
             <div class="sh-item"><div class="sh-il">Taux</div><div class="sh-iv" id="sim-taux">—</div></div>
             <div class="sh-item"><div class="sh-il">/mois</div><div class="sh-iv" id="sim-mois">—</div></div>
           </div>
         </div>
         <div class="card">
-          <div style="padding:16px 16px 4px">
-            <div class="sl-field"><div class="sl-top"><span class="sl-lbl">💼 CA annuel</span><span class="sl-val" id="sl-ca-v">100k €</span></div><input type="range" min="10000" max="500000" step="5000" value="100000" id="sl-ca" oninput="onSlider()"></div>
-            <div class="sl-field"><div class="sl-top"><span class="sl-lbl">💸 Charges</span><span class="sl-val" id="sl-ch-v">30k €</span></div><input type="range" min="0" max="200000" step="2000" value="30000" id="sl-ch" oninput="onSlider()"></div>
-            <div class="sl-field" id="sl-rem-wrap"><div class="sl-top"><span class="sl-lbl">👤 Rémunération</span><span class="sl-val" id="sl-rem-v">40k €</span></div><input type="range" min="0" max="150000" step="2000" value="40000" id="sl-rem" oninput="onSlider()"></div>
+          <div style="padding:16px 16px 8px">
+            <div class="sl-field">
+              <div class="sl-top"><span class="sl-lbl">💼 CA annuel</span><span class="sl-val" id="sl-ca-v">100k €</span></div>
+              <input type="range" min="10000" max="500000" step="5000" value="100000" id="sl-ca" oninput="onSlider()">
+            </div>
+            <div class="sl-field">
+              <div class="sl-top"><span class="sl-lbl">💸 Charges pro</span><span class="sl-val" id="sl-ch-v">30k €</span></div>
+              <input type="range" min="0" max="200000" step="2000" value="30000" id="sl-ch" oninput="onSlider()">
+            </div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:4px;margin-bottom:12px">
+              💡 La rémunération est calculée automatiquement selon ton statut
+            </div>
           </div>
           <div id="sim-detail"></div>
         </div>
@@ -939,6 +947,9 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
     </div>
     <div class="tab" onclick="goTab('tout')" id="tab-tout">
       <span class="ti">📊</span><span class="tl">Tout</span>
+    </div>
+    <div class="tab" onclick="openOv('ov-chat')" id="tab-chat">
+      <span class="ti">🤖</span><span class="tl">IA</span>
     </div>
   </div>
 
@@ -1887,35 +1898,45 @@ function undoAction(){
 function onSlider(){
   const ca=parseInt(document.getElementById('sl-ca').value)||0;
   const ch=parseInt(document.getElementById('sl-ch').value)||0;
-  const rem=parseInt(document.getElementById('sl-rem').value)||0;
-  document.getElementById('sl-ca').dataset.touched='1';
-  const isCH=statut.endsWith('_ch'),cur=isCH?'CHF':'€';
+  const isCH=country==='ch', cur=isCH?'CHF':'€';
   document.getElementById('sl-ca-v').textContent=fmtK(ca,cur);
   document.getElementById('sl-ch-v').textContent=fmtK(ch,cur);
-  document.getElementById('sl-rem-v').textContent=fmtK(rem,cur);
-  const cfg=getCfg(statut),r=cfg.calc(ca,ch,rem);
-  document.getElementById('sim-tot').textContent=fmt(r.tot,cur);
+
+  // Rémunération auto selon statut
+  const ben=Math.max(0,ca-ch);
+  let remAuto=0;
+  if(statut==='ae') remAuto=0; // AE: pas de rémunération formelle
+  else if(['sasu','sa'].includes(statut)) remAuto=Math.min(ben*.45, 120000);
+  else if(['eurl','sel'].includes(statut)) remAuto=Math.min(ben*.60, 150000);
+  else if(['sarl_ch','sa_ch','sarl_immo_ch'].includes(statut)) remAuto=Math.min(ben*.50, 200000);
+  else if(statut==='ind_ch') remAuto=Math.min(ben*.65, 180000);
+  else remAuto=Math.min(ben*.40, 100000);
+
+  const cfg=getCfg(statut);
+  const r=cfg.calc(ca,ch,remAuto);
+  const taux=ca>0?Math.round(r.tot/ca*100):0;
+
   document.getElementById('sim-net').textContent=fmt(r.net,cur);
+  document.getElementById('sim-tot').textContent=fmt(r.tot,cur);
   document.getElementById('sim-taux').textContent=ca>0?pct(r.tot/ca*100):'—';
   document.getElementById('sim-mois').textContent=fmt(r.net/12,cur);
-  // Label : secteur exemple ou taux effectif
-  const sd=SECT_DATA[secteur];
-  document.getElementById('sim-sub').textContent=sd?`${sd.label} · Taux effectif ${r.txEff||0}%`:`Taux effectif ${r.txEff||0}%`;
+  document.getElementById('sim-sub').textContent=`${getCfg(statut).n} · taux effectif ${taux}%`;
 
-  document.getElementById('sim-detail').innerHTML=(r.lines||[]).map((l,i)=>{
-    if(!l) return '';
-    if(l.v===null) return `<div style="padding:4px 18px;font-size:11px;color:var(--muted)">${l.l}</div>`;
-    if(l.note) return `<div style="padding:8px 18px;font-size:11px;color:var(--blue);font-weight:700;background:var(--blue-l);margin:4px 18px;border-radius:8px">${l.l}</div>`;
-    if(l.pct) return `<div class="sr" style="border-top:2px solid var(--border)"><span style="font-weight:900">Taux effectif global</span><span class="sr-v" style="font-size:15px;color:${l.v>40?'var(--red)':l.v>30?'var(--amber)':'var(--green)'}">${l.v}%</span></div>`;
-    const isLast=i===r.lines.length-1||r.lines[i+1]?.pct;
-    return `<div class="sr" style="${isLast?'border-top:2px solid var(--border)':''}">
-      <span style="color:${l.cls==='cr'||isLast?'var(--dark)':'var(--muted)'};font-weight:${isLast?'900':'700'};font-size:${isLast?'14px':'13px'}">${l.l}</span>
-      <span class="sr-v ${l.cls||''}" style="font-size:${isLast?'14px':'13px'}">${l.v<0?'−':''}${fmt(Math.abs(l.v),cur)}</span>
-    </div>`;
-  }).join('');
+  // Détail simplifié - 3 lignes max
+  const lines=[
+    {l:'Ton CA annuel',v:ca,cls:''},
+    {l:'Charges pro déduites',v:-ch,cls:'cr'},
+    {l:'Impôts & charges sociales',v:-r.tot,cls:'db'},
+    {l:'💚 Ce que tu gardes',v:r.net,cls:'cr',bold:true},
+  ];
+  document.getElementById('sim-detail').innerHTML=lines.map((l,i)=>`
+    <div class="sr" style="${l.bold?'border-top:2px solid var(--border)':''}">
+      <span style="color:${l.bold?'var(--dark)':'var(--muted)'};font-weight:${l.bold?'900':'700'};font-size:${l.bold?'14px':'13px'}">${l.l}</span>
+      <span class="sr-v ${l.cls}" style="${l.bold?'font-size:15px;font-weight:900;color:var(--green)':''}">${l.v<0?'-':''}${fmt(Math.abs(l.v),cur)}</span>
+    </div>`).join('');
 }
 
-// Pré-remplir le simulateur avec données du secteur
+
 function prefillSimulateur(){
   const sd=SECT_DATA[secteur]||SECT_DATA.autre;
   const slCa=document.getElementById('sl-ca');
@@ -2947,6 +2968,8 @@ renderUpgradeButtons(); // Affiche les prix selon le pays
 supa.auth.getSession().then(({data:{session}})=>{
   if(!session){
     document.getElementById('auth-screen').style.display='flex';
+  } else {
+    document.getElementById('auth-screen').style.display='none';
   }
 });
 </script>
