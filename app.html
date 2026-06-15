@@ -2059,8 +2059,19 @@ function goTab(id){
 
 // ══ PAYS / STATUT / CANTON ══
 function setStatut(val){
+  // Bloquer si mauvais pays
+  const isCH = val.endsWith('_ch') || val==='ind_ch';
+  if(isCH && country!=='ch'){ 
+    document.getElementById('sel-statut').value=statut;
+    toast('⚠️ Statut non disponible pour la France');
+    return;
+  }
+  if(!isCH && country==='ch'){
+    document.getElementById('sel-statut').value=statut;
+    toast('⚠️ Statut non disponible pour la Suisse');
+    return;
+  }
   statut=val;
-  country=val.endsWith('_ch')?'ch':'fr';
   document.getElementById('country-lbl').textContent='Pays : '+(country==='ch'?'Suisse 🇨🇭':'France 🇫🇷');
   document.getElementById('canton-bloc').style.display=country==='ch'?'block':'none';
   buildCantonSel();refresh();
