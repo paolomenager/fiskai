@@ -2023,11 +2023,7 @@ TU MAÎTRISES :
 France : IS (15%/25%), IR, flat tax 30%, TVA (20%/10%/5.5%/2.1%), cotisations URSSAF, SCI IR/IS, SEL/SELARL, SASU, EURL, auto-entreprise (BIC/BNC), PER, loi Madelin, déficit foncier, amortissements, CFE, CET
 Suisse : IS cantonal (11.5% Zoug → 24.2% Genève), AVS/AI/APG, TVA AFC (8.1%/2.6%/3.8%), Pilier 3a, Sàrl, SA, indépendant, imposition à la dépense, impôt anticipé 35%
 
-CONTEXTE UTILISATEUR :
-- Pays : ${country==='ch'?'Suisse':'France'}
-- Statut : ${statut}
-- Secteur : ${secteur}
-Tu adaptes tes conseils à ce contexte automatiquement.`;
+Tu adaptes tes conseils au pays, statut et secteur de l'utilisateur (injectés dynamiquement).`;
 async function sendChat(){
   const inp=document.getElementById('chat-in');
   const msg=inp.value.trim();if(!msg)return;
@@ -2037,8 +2033,8 @@ async function sendChat(){
   chatHist.push({role:'user',content:`Contexte: ${statut} · ${country==='ch'?'Suisse':'France'} · Secteur: ${secteur} · CA~${fmt(getCA())} · Charges~${fmt(getCH())}. Question: ${msg}`});
   const tp=addTyping();
   try{
-    const sysWithCtx = SYS.replace('${country==='ch'?'Suisse':'France'}', country==='ch'?'Suisse':'France').replace('${statut}', statut).replace('${secteur}', secteur);
-    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:sysWithCtx,messages:chatHist})});
+    const sysCtx=SYS+`\n\nCONTEXTE: Pays=${country==='ch'?'Suisse':'France'}, Statut=${statut}, Secteur=${secteur}.`;
+    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:sysCtx,messages:chatHist})});
     const data=await res.json();
     const reply=data.content?.[0]?.text||'Désolé, une erreur.';
     tp.remove();addBubble('ai',reply);chatHist.push({role:'assistant',content:reply});
