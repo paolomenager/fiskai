@@ -1929,7 +1929,7 @@ function calcF(){
   const ht=parseFloat(document.getElementById('f-ht').value)||0;
 const tva=parseFloat(document.getElementById('f-tva').value); // pas de ||0.20
 const ttc=ht+ht*tva;
-  const cur=statut.endsWith('_ch')?'CHF':'€';
+  const cur=country==='ch'?'CHF':'€';
   document.getElementById('fp-ht').textContent=fmt(ht,cur);
   document.getElementById('fp-tva').textContent=fmt(ht*tva,cur);
   document.getElementById('fp-ttc').textContent=fmt(ttc,cur);
