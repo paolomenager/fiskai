@@ -1941,7 +1941,7 @@ async function genFacture(){
   const ht=parseFloat(document.getElementById('f-ht').value)||0;
   const tvaR=parseFloat(document.getElementById('f-tva').value)||0;
   const tva=ht*tvaR,ttc=ht+tva;
-  const cur=statut.endsWith('_ch')?'CHF':'€';
+  const cur=country==='ch'?'CHF':'€';
   const emetteur=document.getElementById('f-emetteur').value||'Mon Entreprise';
   const desc=document.getElementById('f-desc').value||'Prestation';
   const now=new Date(),m=['jan.','fév.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
@@ -2077,13 +2077,8 @@ function setStatut(val){
   buildCantonSel();refresh();
 }
 function toggleCountry(){
-  country=country==='fr'?'ch':'fr';
-  statut=country==='ch'?'sarl_ch':'sasu';
-  document.getElementById('sel-statut').value=statut;
-  document.getElementById('country-lbl').textContent='Pays : '+(country==='ch'?'Suisse 🇨🇭':'France 🇫🇷');
-  document.getElementById('canton-bloc').style.display=country==='ch'?'block':'none';
-  buildCantonSel();refresh();
-  toast(country==='ch'?'🇨🇭 Mode Suisse activé':'🇫🇷 Mode France activé');
+  // Verrouillé — le pays est défini à l'inscription
+  toast('⚠️ Le pays est défini à l\'inscription et ne peut pas être changé.');
 }
 function setCanton(val){
   canton=val;
@@ -2281,13 +2276,35 @@ function openScan(mode){
   openOv('ov-scan');
 }
 
+
 function resetScan(){
-  function processScanFile(file){
+  scanData=null; scanB64=null; scanMime=null;
+  document.getElementById('scan-drop').style.display='block';
+  document.getElementById('scan-preview').style.display='none';
+  document.getElementById('scan-result').style.display='none';
+  document.getElementById('scan-error').style.display='none';
+  document.getElementById('scan-confirm-btn').style.display='none';
+  document.getElementById('scan-loading').style.display='none';
+  document.getElementById('scan-input').value='';
+}
+
+function handleScanFile(input){
+  const file=input.files[0];
+  if(file) processScanFile(file);
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('scan-drop').style.borderColor='var(--border)';
+  const file=e.dataTransfer.files[0];
+  if(file) processScanFile(file);
+}
+
+function processScanFile(file){
   const maxSize=4*1024*1024;
-  if(file.size>maxSize){showScanError('Fichier trop lourd (max 4 Mo). Compresse l\'image.');return;}
+  if(file.size>maxSize){showScanError('Fichier trop lourd (max 4 Mo).');return;}
   const allowed=['image/jpeg','image/png','image/webp','image/gif'];
-  if(!allowed.includes(file.type)){showScanError('Format non supporté. Utilise JPG, PNG ou WebP.');return;}
-  scanMime='image/jpeg';
+  if(!allowed.includes(file.type)){showScanError('Format non supporté. Utilise JPG ou PNG.');return;}
   const reader=new FileReader();
   reader.onload=e=>{
     const result=e.target.result;
@@ -2301,6 +2318,7 @@ function resetScan(){
       canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       scanB64=canvas.toDataURL('image/jpeg',0.6).split(',')[1];
+      scanMime='image/jpeg';
       document.getElementById('scan-drop').style.display='none';
       document.getElementById('scan-preview').style.display='block';
       document.getElementById('scan-img').style.display='block';
@@ -2311,6 +2329,25 @@ function resetScan(){
     img.src=result;
   };
   reader.readAsDataURL(file);
+}
+
+async function analyseDocument(){
+  document.getElementById('scan-loading').style.display='block';
+  document.getElementById('scan-error').style.display='none';
+  document.getElementById('scan-result').style.display='none';
+  document.getElementById('scan-confirm-btn').style.display='none';
+
+  const prompt=scanMode==='facture'
+    ? `Tu es un expert comptable. Analyse cette facture et extrais exactement ces informations en JSON valide uniquement (pas de markdown, pas d'explication) :
+{
+  "client": "nom du client destinataire",
+  "fournisseur": "nom de l'émetteur/fournisseur",
+  "description": "description de la prestation ou produit",
+  "montant_ht": nombre,
+  "taux_tva": nombre entre 0 et 1 (ex: 0.20 pour 20%),
+  "montant_ttc": nombre,
+  "date": "date de la facture format DD/MM/YYYY",
+  "num_facture": "numéro de facture ou null"
 }
 Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`
     : `Tu es un expert comptable. Analyse ce document (ticket de caisse, facture fournisseur, note de frais, reçu) et extrais exactement ces informations en JSON valide uniquement :
@@ -2326,25 +2363,12 @@ Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`
 Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`;
 
   try{
-    const mime = scanMime === 'image/jpg' ? 'image/jpeg' : scanMime;
-const validMimes = ['image/jpeg','image/png','image/gif','image/webp'];
-if(scanMime === 'application/pdf') {
-  showScanError('Les PDF ne sont pas encore supportés. Prends une photo du document.');
-  document.getElementById('scan-loading').style.display='none';
-  return;
-}
-if(!validMimes.includes(mime)) {
-  showScanError('Format non supporté. Utilise JPG, PNG ou WebP.');
-  document.getElementById('scan-loading').style.display='none';
-  return;
-}
-const contentArr = scanMime === 'application/pdf'
-  ? [{type:'text',text:prompt}]
-  : [{type:'image',source:{type:'base64',media_type:mime,data:scanB64}},{type:'text',text:prompt}];
-const messages=[{
-  role:'user',
-  content: contentArr
-}];
+    const mime='image/jpeg';
+    const contentArr=[
+      {type:'image',source:{type:'base64',media_type:mime,data:scanB64}},
+      {type:'text',text:prompt}
+    ];
+    const messages=[{role:'user',content:contentArr}];
 
     const res=await fetch('/api/claude',{
       method:'POST',
@@ -2360,7 +2384,6 @@ const messages=[{
     const data=await res.json();
     const text=data.content?.[0]?.text||'';
 
-    // Parser le JSON
     let parsed;
     try{
       const clean=text.replace(/```json|```/g,'').trim();
@@ -2383,7 +2406,6 @@ function showScanResult(d){
   document.getElementById('scan-result').style.display='block';
   document.getElementById('scan-confirm-btn').style.display='block';
 
-  // Champs éditables — l'utilisateur peut corriger avant de confirmer
   const fields=scanMode==='charge'?[
     {k:'fournisseur',l:'Fournisseur',v:d.fournisseur||''},
     {k:'description',l:'Description',v:d.description||''},
@@ -2393,7 +2415,7 @@ function showScanResult(d){
     {k:'client',l:'Client',v:d.client||''},
     {k:'fournisseur',l:'Émetteur',v:d.fournisseur||''},
     {k:'description',l:'Prestation',v:d.description||''},
-    {k:'montant_ht',l:'Montant HT (€)',v:d.montant_ht||'',type:'number'},
+    {k:'montant_ht',l:'Montant HT',v:d.montant_ht||'',type:'number'},
     {k:'taux_tva',l:'TVA (%)',v:d.taux_tva?Math.round(d.taux_tva*100):'',type:'number'},
   ];
 
@@ -2415,7 +2437,6 @@ function showScanResult(d){
 function updateScanData(el){
   const key=el.dataset.key;
   let val=el.value;
-  // Convertir TVA de % à décimal pour le stockage
   if(key==='taux_tva') val=parseFloat(val)/100||0;
   else if(key==='montant_ht'||key==='montant_ttc') val=parseFloat(val)||0;
   if(!scanData) scanData={};
@@ -2434,30 +2455,23 @@ function confirmScan(){
   closeOv('ov-scan');
 
   if(scanMode==='charge'){
-    // Pré-remplir la saisie charge
     eType='ch';
     document.getElementById('btn-rev').className='tt';
     document.getElementById('btn-ch').className='tt on r';
-    // Montant : préférer HT si dispo, sinon TTC
     const amount=d.montant_ht||d.montant_ttc||0;
     document.getElementById('s-amount').value=amount;
     document.getElementById('s-amount').style.borderColor='var(--green)';
     document.getElementById('s-desc').value=d.description||d.fournisseur||'';
-    // Catégorie
     const catMap={'Matériel':'Matériel','Loyer':'Loyer','Déplacement':'Déplacement','Repas':'Repas','Téléphone':'Téléphone','Formation':'Formation','Assurance':'Assurance','Autre':'Autre'};
     selCat=catMap[d.categorie]||'Autre';
     buildCats();
     openOv('ov-saisie');
     toast('✅ Document analysé — vérifie et valide');
-
   } else {
-    // Pré-remplir la facture émise
     if(d.client) document.getElementById('f-client').value=d.client;
     if(d.fournisseur) document.getElementById('f-emetteur').value=d.fournisseur;
     if(d.description) document.getElementById('f-desc').value=d.description;
-    if(d.montant_ht){
-      document.getElementById('f-ht').value=d.montant_ht;
-    }
+    if(d.montant_ht) document.getElementById('f-ht').value=d.montant_ht;
     if(d.taux_tva!=null){
       const tvaSel=document.getElementById('f-tva');
       const rates=[0.20,0.10,0.055,0.021,0.081,0.026,0];
@@ -2603,6 +2617,53 @@ async function signOut() {
 }
 
 // ── Load user data ──
+// ── Trial check ──
+function checkTrial(profile){
+  if(!profile || !profile.created_at) return; // pas de date = ok
+  if(profile.plan && profile.plan !== 'trial') return; // abonné = ok
+  const created = new Date(profile.created_at);
+  const now = new Date();
+  const diffDays = Math.floor((now - created) / (1000*60*60*24));
+  if(diffDays >= 14){
+    showPaywall();
+  }
+}
+
+function showPaywall(){
+  // Bloquer l'app et afficher le choix d'abonnement
+  const isCH = country === 'ch';
+  const starterLink = isCH ? 'https://buy.stripe.com/cNi7sL3E62FZ70EcvIcAo02' : 'https://buy.stripe.com/cNi28r6Qi94n84IcvIcAo00';
+  const proLink = isCH ? 'https://buy.stripe.com/5kQ5kD6QigwPbgU9jwcAo03' : 'https://buy.stripe.com/bJefZhfmO1BVdp29jwcAo01';
+  const starterPrice = isCH ? '59 CHF/mois' : '49€/mois';
+  const proPrice = isCH ? '119 CHF/mois' : '99€/mois';
+
+  const wall = document.createElement('div');
+  wall.id = 'paywall';
+  wall.style.cssText = 'position:fixed;inset:0;background:#0A0A12;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center';
+  wall.innerHTML = `
+    <div style="font-size:48px;margin-bottom:16px">⏰</div>
+    <div style="font-size:24px;font-weight:900;color:white;margin-bottom:8px">Essai terminé</div>
+    <div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:32px;max-width:280px">Tes 14 jours gratuits sont écoulés.<br>Choisis un forfait pour continuer.</div>
+    <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px">
+      <button onclick="window.open('${starterLink}','_blank')" style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,200,151,.1);border:1.5px solid rgba(0,200,151,.3);border-radius:14px;padding:16px 18px;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">
+        <div style="text-align:left">
+          <div style="font-size:15px;font-weight:900;color:white">Starter</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4)">${isCH?'Indépendant · PME':'AE · Indépendant · FR + CH'}</div>
+        </div>
+        <div style="font-size:16px;font-weight:900;color:#00C897">${starterPrice} →</div>
+      </button>
+      <button onclick="window.open('${proLink}','_blank')" style="display:flex;align-items:center;justify-content:space-between;background:#111;border:1.5px solid rgba(0,200,151,.4);border-radius:14px;padding:16px 18px;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">
+        <div style="text-align:left">
+          <div style="font-size:15px;font-weight:900;color:white">Pro ⭐</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4)">${isCH?'Sàrl · SA · Immo':'SASU · EURL · SCI · SEL'}</div>
+        </div>
+        <div style="font-size:16px;font-weight:900;color:#00C897">${proPrice} →</div>
+      </button>
+      <div style="font-size:11px;color:rgba(255,255,255,.2);margin-top:8px;cursor:pointer" onclick="signOut()">Se déconnecter</div>
+    </div>`;
+  document.body.appendChild(wall);
+}
+
 async function loadUserData(userId) {
   // Charger les opérations
   const { data: ents } = await supa
@@ -2658,6 +2719,11 @@ async function loadUserData(userId) {
     if (profile.pays) { country = profile.pays; }
     if (profile.statut) { statut = profile.statut; }
     if (profile.secteur) { secteur = profile.secteur; }
+    // Verrouiller le pays — mettre à jour l'affichage
+    updateCountryBadge();
+    renderUpgradeButtons();
+    // Vérifier le trial
+    checkTrial(profile);
   }
 
   refresh();
@@ -2676,7 +2742,7 @@ async function saveEntry(entry) {
     amount: entry.amount,
     date_op: entry.date,
   }).select().single();
-  if (data) entry.id = data.id; // update local id with DB id
+  if (data) entry.id = data.id;
 }
 
 // ── Delete entry from Supabase ──
@@ -2738,7 +2804,6 @@ supa.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// ── Upgrade buttons dynamiques selon pays ──
 function renderUpgradeButtons(){
   const isCH = country === 'ch';
   const starterLink = isCH ? 'https://buy.stripe.com/cNi7sL3E62FZ70EcvIcAo02' : 'https://buy.stripe.com/cNi28r6Qi94n84IcvIcAo00';
