@@ -2282,99 +2282,35 @@ function openScan(mode){
 }
 
 function resetScan(){
-  scanData=null;scanB64=null;scanMime=null;
-  document.getElementById('scan-drop').style.display='block';
-  document.getElementById('scan-preview').style.display='none';
-  document.getElementById('scan-result').style.display='none';
-  document.getElementById('scan-loading').style.display='none';
-  document.getElementById('scan-error').style.display='none';
-  document.getElementById('scan-confirm-btn').style.display='none';
-  document.getElementById('scan-input').value='';
-  const img=document.getElementById('scan-img');
-  img.src='';img.style.display='none';
-  document.getElementById('scan-pdf-preview').style.display='none';
-}
-
-function handleDrop(e){
-  e.preventDefault();
-  document.getElementById('scan-drop').style.borderColor='var(--border)';
-  const file=e.dataTransfer.files[0];
-  if(file) processScanFile(file);
-}
-
-function handleScanFile(input){
-  const file=input.files[0];
-  if(file) processScanFile(file);
-}
-
-function processScanFile(file){
+  function processScanFile(file){
   const maxSize=4*1024*1024;
-  if(file.size>maxSize){
-    showScanError('Fichier trop lourd (max 4 Mo). Compresse l\'image et réessaie.');
-    return;
-  }
-  const allowed=['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
-  if(!allowed.includes(file.type)){
-    showScanError('Format non supporté. Utilise JPG, PNG, WebP ou PDF.');
-    return;
-  }
-  scanMime=file.type;
+  if(file.size>maxSize){showScanError('Fichier trop lourd (max 4 Mo). Compresse l\'image.');return;}
+  const allowed=['image/jpeg','image/png','image/webp','image/gif'];
+  if(!allowed.includes(file.type)){showScanError('Format non supporté. Utilise JPG, PNG ou WebP.');return;}
+  scanMime='image/jpeg';
   const reader=new FileReader();
-  reader.onload=async e=>{
+  reader.onload=e=>{
     const result=e.target.result;
-    if(file.type !== 'application/pdf'){
-      await new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const max = 800;
-          let w = img.width, h = img.height;
-          if(w > max){ h = h*max/w; w = max; }
-          if(h > max){ w = w*max/h; h = max; }
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img,0,0,w,h);
-          scanB64 = canvas.toDataURL('image/jpeg',0.5).split(',')[1];
-          scanMime = 'image/jpeg';
-          resolve();
-        };
-        img.src = result;
-      });
-    } else {
-      scanB64 = result.split(',')[1];
-    }
-    document.getElementById('scan-drop').style.display='none';
-    document.getElementById('scan-preview').style.display='block';
-    if(file.type==='application/pdf'){
-      document.getElementById('scan-img').style.display='none';
-      document.getElementById('scan-pdf-preview').style.display='block';
-      document.getElementById('scan-pdf-name').textContent=file.name;
-    } else {
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const max=800;
+      let w=img.width,h=img.height;
+      if(w>max){h=h*max/w;w=max;}
+      if(h>max){w=w*max/h;h=max;}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      scanB64=canvas.toDataURL('image/jpeg',0.6).split(',')[1];
+      document.getElementById('scan-drop').style.display='none';
+      document.getElementById('scan-preview').style.display='block';
       document.getElementById('scan-img').style.display='block';
       document.getElementById('scan-img').src=result;
       document.getElementById('scan-pdf-preview').style.display='none';
-    }
-    analyseDocument();
+      analyseDocument();
+    };
+    img.src=result;
   };
   reader.readAsDataURL(file);
-}
-
-async function analyseDocument(){
-  document.getElementById('scan-loading').style.display='block';
-  document.getElementById('scan-error').style.display='none';
-  document.getElementById('scan-result').style.display='none';
-  document.getElementById('scan-confirm-btn').style.display='none';
-
-  const prompt=scanMode==='facture'
-    ? `Tu es un expert comptable. Analyse cette facture et extrais exactement ces informations en JSON valide uniquement (pas de markdown, pas d'explication) :
-{
-  "client": "nom du client destinataire",
-  "fournisseur": "nom de l'émetteur/fournisseur",
-  "description": "description de la prestation ou produit",
-  "montant_ht": nombre,
-  "taux_tva": nombre entre 0 et 1 (ex: 0.20 pour 20%),
-  "montant_ttc": nombre,
-  "date": "date de la facture format DD/MM/YYYY",
-  "numero": "numéro de facture si visible"
 }
 Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`
     : `Tu es un expert comptable. Analyse ce document (ticket de caisse, facture fournisseur, note de frais, reçu) et extrais exactement ces informations en JSON valide uniquement :
