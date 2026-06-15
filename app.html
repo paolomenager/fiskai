@@ -598,13 +598,6 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
       <div class="field" style="flex:1"><label>Montant HT *</label><input id="f-ht" type="number" inputmode="decimal" placeholder="0.00" oninput="calcF()"></div>
       <div class="field" style="flex:1"><label>TVA</label>
         <select id="f-tva" onchange="calcF()" style="background:var(--bg);border:2px solid var(--border);border-radius:var(--r-sm);padding:12px 13px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--dark);width:100%;outline:none">
-          <option value="0.20">20% (normal)</option>
-          <option value="0.10">10% (réduit)</option>
-          <option value="0.055">5.5% (alimentaire)</option>
-          <option value="0.021">2.1% (presse)</option>
-          <option value="0.081">8.1% 🇨🇭</option>
-          <option value="0.026">2.6% 🇨🇭 réduit</option>
-          <option value="0">0% (exonéré)</option>
         </select>
       </div>
     </div>
@@ -921,9 +914,13 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
       </div>
 
       <!-- ── UPGRADE ── -->
-      <div class="card" style="background:linear-gradient(135deg,#0F1A15,#0A1510);border:1px solid rgba(0,200,151,.2)">
-        <div class="card-title" style="color:var(--green)">⚡ Passer à un forfait</div>
-        <div id="upgrade-buttons" style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <div style="background:linear-gradient(135deg,#0A1510,#0F1A15);border-radius:20px;padding:18px 16px;margin-bottom:12px;border:1px solid rgba(0,200,151,.15)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:14px">⚡</span>
+          <span style="font-size:13px;font-weight:900;color:#00C897">Passer à un forfait</span>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.3);font-weight:600;margin-bottom:14px">Accès illimité · Support prioritaire · Sans engagement</div>
+        <div id="upgrade-buttons" style="display:flex;gap:8px">
         </div>
       </div>
 
@@ -2618,14 +2615,52 @@ async function signOut() {
 
 // ── Load user data ──
 // ── Trial check ──
+function buildTvaSelect(){
+  const sel = document.getElementById('f-tva');
+  if(!sel) return;
+  if(country === 'ch'){
+    sel.innerHTML = `
+      <option value="0.081">8.1% (normal 🇨🇭)</option>
+      <option value="0.026">2.6% (réduit 🇨🇭)</option>
+      <option value="0.038">3.8% (hébergement 🇨🇭)</option>
+      <option value="0">0% (exonéré)</option>`;
+  } else {
+    sel.innerHTML = `
+      <option value="0.20">20% (normal)</option>
+      <option value="0.10">10% (réduit)</option>
+      <option value="0.055">5.5% (alimentaire)</option>
+      <option value="0.021">2.1% (presse)</option>
+      <option value="0">0% (exonéré)</option>`;
+  }
+}
+
+function showTrialBanner(daysLeft){
+  // Ne pas afficher si déjà présent
+  if(document.getElementById('trial-banner')) return;
+  const urgent = daysLeft <= 3;
+  const banner = document.createElement('div');
+  banner.id = 'trial-banner';
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:99;background:${urgent?'#FF4D6D':'#FF9A3C'};color:white;text-align:center;padding:8px 16px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;max-width:430px;margin:0 auto`;
+  banner.innerHTML = `
+    <span>${urgent?'🚨':'⏰'} Il vous reste <b>${daysLeft} jour${daysLeft>1?'s':''}</b> d'essai gratuit</span>
+    <button onclick="showPaywall()" style="background:white;color:${urgent?'#FF4D6D':'#FF9A3C'};border:none;border-radius:99px;padding:3px 10px;font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;cursor:pointer">Passer Pro →</button>`;
+  document.body.prepend(banner);
+  // Décaler l'app vers le bas pour ne pas cacher le contenu
+  const app = document.getElementById('app');
+  if(app) app.style.paddingTop = '36px';
+}
+
 function checkTrial(profile){
-  if(!profile || !profile.created_at) return; // pas de date = ok
+  if(!profile || !profile.created_at) return;
   if(profile.plan && profile.plan !== 'trial') return; // abonné = ok
   const created = new Date(profile.created_at);
   const now = new Date();
   const diffDays = Math.floor((now - created) / (1000*60*60*24));
-  if(diffDays >= 14){
+  const daysLeft = 14 - diffDays;
+  if(daysLeft <= 0){
     showPaywall();
+  } else if(daysLeft <= 7){
+    showTrialBanner(daysLeft);
   }
 }
 
@@ -2722,6 +2757,7 @@ async function loadUserData(userId) {
     // Verrouiller le pays — mettre à jour l'affichage
     updateCountryBadge();
     renderUpgradeButtons();
+    buildTvaSelect();
     // Vérifier le trial
     checkTrial(profile);
   }
@@ -2808,27 +2844,24 @@ function renderUpgradeButtons(){
   const isCH = country === 'ch';
   const starterLink = isCH ? 'https://buy.stripe.com/cNi7sL3E62FZ70EcvIcAo02' : 'https://buy.stripe.com/cNi28r6Qi94n84IcvIcAo00';
   const proLink = isCH ? 'https://buy.stripe.com/5kQ5kD6QigwPbgU9jwcAo03' : 'https://buy.stripe.com/bJefZhfmO1BVdp29jwcAo01';
-  const starterPrice = isCH ? '59 CHF/mois' : '49€/mois';
-  const proPrice = isCH ? '119 CHF/mois' : '99€/mois';
-  const starterDesc = isCH ? 'Indépendant · PME · Sàrl CH' : 'AE · Indépendant · FR + CH';
-  const proDesc = isCH ? 'Sàrl · SA · Immo · Libéral' : 'SASU · EURL · SCI · SEL · Sàrl CH';
+  const starterPrice = isCH ? '59 CHF' : '49€';
+  const proPrice = isCH ? '119 CHF' : '99€';
+  const starterDesc = isCH ? 'Indépendant · PME' : 'AE · Indépendant';
+  const proDesc = isCH ? 'Sàrl · SA · Immo' : 'SASU · EURL · SCI';
 
   const el = document.getElementById('upgrade-buttons');
   if(!el) return;
   el.innerHTML = `
-    <button onclick="window.open('${starterLink}','_blank')" style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,200,151,.08);border:1px solid rgba(0,200,151,.2);border-radius:12px;padding:13px 15px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:left;width:100%">
-      <div>
-        <div style="font-size:13px;font-weight:900;color:var(--dark)">Starter</div>
-        <div style="font-size:10px;color:var(--muted)">${starterDesc}</div>
-      </div>
-      <div style="font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:var(--green)">${starterPrice} →</div>
+    <button onclick="window.open('${starterLink}','_blank')" style="flex:1;background:rgba(0,200,151,.1);border:1.5px solid rgba(0,200,151,.25);border-radius:14px;padding:14px 12px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:center;position:relative">
+      <div style="font-size:12px;font-weight:900;color:#00C897;margin-bottom:3px">Starter</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:8px">${starterDesc}</div>
+      <div style="font-size:18px;font-weight:900;color:white;font-family:'Nunito',sans-serif">${starterPrice}<span style="font-size:10px;font-weight:700;opacity:.5">/mois</span></div>
     </button>
-    <button onclick="window.open('${proLink}','_blank')" style="display:flex;align-items:center;justify-content:space-between;background:#0A0A0F;border:1px solid rgba(0,200,151,.3);border-radius:12px;padding:13px 15px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:left;width:100%">
-      <div>
-        <div style="font-size:13px;font-weight:900;color:white">Pro ⭐</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.4)">${proDesc}</div>
-      </div>
-      <div style="font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:var(--green)">${proPrice} →</div>
+    <button onclick="window.open('${proLink}','_blank')" style="flex:1;background:rgba(0,200,151,.18);border:2px solid #00C897;border-radius:14px;padding:14px 12px;cursor:pointer;font-family:'Nunito',sans-serif;text-align:center;position:relative">
+      <div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#00C897;color:#000;font-size:8px;font-weight:900;padding:2px 8px;border-radius:99px;white-space:nowrap">POPULAIRE</div>
+      <div style="font-size:12px;font-weight:900;color:#00C897;margin-bottom:3px">Pro ⭐</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:8px">${proDesc}</div>
+      <div style="font-size:18px;font-weight:900;color:white;font-family:'Nunito',sans-serif">${proPrice}<span style="font-size:10px;font-weight:700;opacity:.5">/mois</span></div>
     </button>`;
 }
 
