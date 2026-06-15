@@ -1541,7 +1541,10 @@ function varColor(name){
 
 // ══ REFRESH ══
 function refresh(){
-  const ca=getCA(), ch=getCH();
+  const caReal=getCA(), chReal=getCH();
+  // Utiliser des valeurs par défaut si pas encore de données
+  const ca=caReal>0?caReal:50000;
+  const ch=chReal>0?chReal:15000;
   const cfg=getCfg(statut);
   const rem=Math.min(ch*.45,ca*.28);
   const r=cfg.calc(ca,ch,rem);
@@ -1708,7 +1711,10 @@ function refreshTVA(cur,rate){
    <div class="sr"><span style="color:var(--muted);font-weight:700">Alimentaire</span><span class="sr-v">5.5%</span></div>`);
 }
 
-function refreshStatuts(ca,ch){
+function refreshStatuts(caRaw,chRaw){
+  // Valeurs par défaut si pas de données
+  const ca=caRaw>0?caRaw:50000;
+  const ch=chRaw>0?chRaw:15000;
   const rem=Math.min(ca*.35,Math.max(24000,ca*.25));
   const isCH=statut.endsWith('_ch');
   const keys=isCH?['sarl_ch','sa_ch','ind_ch','sarl_immo_ch']:['ae','sasu','eurl','sa','sci_ir','sci_is','sel'];
@@ -2004,7 +2010,24 @@ async function payFacture(id){
 }
 
 // ══ CHAT ══
-const SYS=`Tu es Fiskai, conseiller fiscal expert France et Suisse. Tu parles simplement, sans jargon. Max 2 paragraphes courts. Bienveillant, direct, concret. Tu connais : IS, IR, TVA, cotisations, SCI IR/IS, SEL, Sàrl immo CH, cantons suisses, optimisations secteur.`;
+const SYS=`Tu es Fiskai, un expert-comptable et conseiller fiscal spécialisé France et Suisse. Tu es précis, concret et bienveillant.
+
+RÈGLES STRICTES :
+- Réponds TOUJOURS en français
+- Maximum 3 paragraphes courts et clairs
+- Donne des chiffres précis quand tu les connais (taux, plafonds, délais)
+- Propose toujours une action concrète à la fin
+- Si la question dépasse ton périmètre, dis-le honnêtement et suggère un expert
+
+TU MAÎTRISES :
+France : IS (15%/25%), IR, flat tax 30%, TVA (20%/10%/5.5%/2.1%), cotisations URSSAF, SCI IR/IS, SEL/SELARL, SASU, EURL, auto-entreprise (BIC/BNC), PER, loi Madelin, déficit foncier, amortissements, CFE, CET
+Suisse : IS cantonal (11.5% Zoug → 24.2% Genève), AVS/AI/APG, TVA AFC (8.1%/2.6%/3.8%), Pilier 3a, Sàrl, SA, indépendant, imposition à la dépense, impôt anticipé 35%
+
+CONTEXTE UTILISATEUR :
+- Pays : ${country==='ch'?'Suisse':'France'}
+- Statut : ${statut}
+- Secteur : ${secteur}
+Tu adaptes tes conseils à ce contexte automatiquement.`;
 async function sendChat(){
   const inp=document.getElementById('chat-in');
   const msg=inp.value.trim();if(!msg)return;
@@ -2014,7 +2037,8 @@ async function sendChat(){
   chatHist.push({role:'user',content:`Contexte: ${statut} · ${country==='ch'?'Suisse':'France'} · Secteur: ${secteur} · CA~${fmt(getCA())} · Charges~${fmt(getCH())}. Question: ${msg}`});
   const tp=addTyping();
   try{
-    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:SYS,messages:chatHist})});
+    const sysWithCtx = SYS.replace('${country==='ch'?'Suisse':'France'}', country==='ch'?'Suisse':'France').replace('${statut}', statut).replace('${secteur}', secteur);
+    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:sysWithCtx,messages:chatHist})});
     const data=await res.json();
     const reply=data.content?.[0]?.text||'Désolé, une erreur.';
     tp.remove();addBubble('ai',reply);chatHist.push({role:'assistant',content:reply});
