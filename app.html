@@ -2349,6 +2349,17 @@ Si une valeur est absente mets null. Réponds UNIQUEMENT avec le JSON.`;
 
   try{
     const mime = scanMime === 'image/jpg' ? 'image/jpeg' : scanMime;
+const validMimes = ['image/jpeg','image/png','image/gif','image/webp'];
+if(scanMime === 'application/pdf') {
+  showScanError('Les PDF ne sont pas encore supportés. Prends une photo du document.');
+  document.getElementById('scan-loading').style.display='none';
+  return;
+}
+if(!validMimes.includes(mime)) {
+  showScanError('Format non supporté. Utilise JPG, PNG ou WebP.');
+  document.getElementById('scan-loading').style.display='none';
+  return;
+}
 const contentArr = scanMime === 'application/pdf'
   ? [{type:'text',text:prompt}]
   : [{type:'image',source:{type:'base64',media_type:mime,data:scanB64}},{type:'text',text:prompt}];
