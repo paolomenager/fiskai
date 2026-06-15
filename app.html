@@ -1952,6 +1952,20 @@ async function genFacture(){
   factures.unshift(facture);
   entries.unshift(entry);
   closeOv('ov-facture');
+  // Générer PDF téléchargeable
+const html=`<html><body style="font-family:Arial;padding:40px">
+<h2>${emetteur}</h2><p>Facture n° ${num} — ${dateStr}</p><hr>
+<p><b>Client :</b> ${client}</p>
+<p><b>Description :</b> ${desc}</p><hr>
+<p>Total HT : ${ht} ${cur}</p>
+<p>TVA (${Math.round(tvaR*100)}%) : ${tva.toFixed(2)} ${cur}</p>
+<p><b>Total TTC : ${ttc.toFixed(2)} ${cur}</b></p>
+</body></html>`;
+const blob=new Blob([html],{type:'text/html'});
+const a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download=`${num}.html`;
+a.click();
   renderFactures();
   refresh();toast('✅ Facture '+num+' créée · ajoutée aux revenus');
   await saveFacture(facture);
