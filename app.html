@@ -2227,15 +2227,6 @@ const html=`<html><head><meta charset="UTF-8">
     </div>
     <div class="footer-text">Document généré le ${dateStr}</div>
   </div>
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js')
-      .then(()=>console.log('Fiskai PWA ready'))
-      .catch(e=>console.log('SW error:',e));
-  });
-}
-</script>
 </body></html>`;
 const blob=new Blob([html],{type:'text/html'});
 const a=document.createElement('a');
@@ -3311,4 +3302,6 @@ function installPWA(){
   }
 }
 
-
+</script>
+</body>
+</html>
