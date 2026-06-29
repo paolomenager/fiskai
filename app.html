@@ -724,14 +724,10 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
     <div class="hdr-chip">
       <span>📋</span>
       <select id="sel-statut" onchange="setStatut(this.value)">
-        <optgroup label="🇫🇷 France">
-          <option value="ae">Auto-entrepreneur</option>
-          <option value="sasu" selected>SASU / SAS</option>
-          <option value="eurl">EURL / SARL</option>
+          <option value="ae" selected>Auto-entrepreneur</option>
+          <option value="sel">Profession libérale</option>
           <option value="sci_ir">SCI à l'IR</option>
           <option value="sci_is">SCI à l'IS</option>
-          <option value="sel">Profession libérale / SEL</option>
-        </optgroup>
         </select>
     </div>
     <button class="hdr-btn" onclick="toggleTheme()" id="theme-btn">☀️</button>
@@ -971,7 +967,7 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
 
 <script>
 // ══ STATE ══
-let country='fr', statut='sasu', canton='zg', secteur='autre';
+let country='fr', statut='ae', canton='zg', secteur='autre';
 let eType='rev', selCat='Prestations', filterMode='all';
 const chatHist=[], factures=[];
 let factNum=1, tutoSpot=null, tutoBub=null;
@@ -3184,7 +3180,8 @@ function renderUpgradeButtons(){
 function detectPays(){
   // fiskai.fr — toujours France
   country = 'fr';
-  if(!statut || statut.endsWith('_ch') || statut === 'ind_ch') statut = 'sasu';
+  const validFR = ['ae','sel','sci_ir','sci_is'];
+  if(!statut || statut.endsWith('_ch') || statut === 'ind_ch' || !validFR.includes(statut)) statut = 'ae';
   updateCountryBadge();
   buildTvaSelect();
 }
