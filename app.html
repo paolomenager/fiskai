@@ -2228,6 +2228,16 @@ const html=`<html><head><meta charset="UTF-8">
     <div class="footer-text">Document généré le ${dateStr}</div>
   </div>
 
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js')
+      .then(()=>console.log('Fiskai PWA ready'))
+      .catch(e=>console.log('SW error:',e));
+  });
+}
+</script>
 </body></html>`;
 const blob=new Blob([html],{type:'text/html'});
 const a=document.createElement('a');
@@ -3274,60 +3284,33 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 
 function installPWA(){
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isAndroid = /android/i.test(navigator.userAgent);
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   if(deferredPrompt){
     deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(r => {
-      if(r.outcome === 'accepted') toast('🎉 Fiskai installé sur ton écran d\'accueil !');
-      deferredPrompt = null;
+    deferredPrompt.userChoice.then(r=>{
+      if(r.outcome==='accepted') toast('🎉 Fiskai installé sur ton écran d\'accueil !');
+      deferredPrompt=null;
     });
   } else if(isIOS){
-    // Show iOS instructions modal
-    const m = document.createElement('div');
-    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;display:flex;align-items:flex-end;justify-content:center';
-    m.innerHTML = \`<div style="background:var(--surface);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;text-align:center">
-      <div style="font-size:32px;margin-bottom:12px">📲</div>
-      <div style="font-size:17px;font-weight:800;color:var(--dark);margin-bottom:8px">Installer Fiskai</div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px">
-        1. Appuie sur <strong>Partager</strong> <span style="font-size:18px">⎙</span> en bas de Safari<br>
-        2. Choisis <strong>"Sur l'écran d'accueil"</strong><br>
-        3. Appuie sur <strong>Ajouter</strong>
-      </div>
-      <button onclick="this.closest('div[style*=fixed]').remove()" style="background:var(--green);color:#000;border:none;border-radius:99px;padding:14px 32px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">Compris ✓</button>
-    </div>\`;
+    const m=document.createElement('div');
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+    const d=document.createElement('div');
+    d.style.cssText='background:var(--surface);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;text-align:center';
+    d.innerHTML='<div style="font-size:32px;margin-bottom:12px">📲</div>'
+      +'<div style="font-size:17px;font-weight:800;color:var(--dark);margin-bottom:8px">Installer Fiskai</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:20px">'
+      +'1. Appuie sur <strong>Partager ⎙</strong> en bas de Safari<br>'
+      +'2. Choisis <strong>"Sur l\'écran d\'accueil"</strong><br>'
+      +'3. Appuie sur <strong>Ajouter</strong></div>'
+      +'<button onclick="this.closest(\'.pwa-modal\').remove()" style="background:var(--green);color:#000;border:none;border-radius:99px;padding:14px 32px;font-size:15px;font-weight:800;cursor:pointer;font-family:\'Nunito\',sans-serif;width:100%">Compris ✓</button>';
+    d.querySelector('button').onclick=()=>m.remove();
+    m.classList.add('pwa-modal');
+    m.appendChild(d);
+    m.onclick=e=>{if(e.target===m)m.remove();};
     document.body.appendChild(m);
-    m.onclick = e => { if(e.target===m) m.remove(); };
   } else {
     toast('Ouvre fiskai.fr dans Chrome pour installer l\'app 📲');
   }
 }
 
-window.addEventListener('appinstalled', () => {
-  toast('🎉 Fiskai installé !');
-  const btn = document.getElementById('pwa-install-btn');
-  if(btn) btn.style.display = 'none';
-});
-</script>
 
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('Fiskai PWA ready'))
-      .catch(e => console.log('SW error:', e));
-  });
-}
-</script>
-
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('Fiskai PWA ready'))
-      .catch(e => console.log('SW error:', e));
-  });
-}
-</script>
-</body>
-</html>
