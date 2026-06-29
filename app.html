@@ -713,11 +713,11 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
       <div style="display:flex;align-items:center;gap:10px">
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="34" height="34" rx="9" fill="#00C897"/>
-          <rect x="10" y="9" width="4" height="16" rx="1.5" fill="#0A0A0F"/>
-          <rect x="10" y="9" width="13" height="4" rx="1.5" fill="#0A0A0F"/>
-          <rect x="10" y="17" width="9" height="3.5" rx="1.5" fill="#0A0A0F"/>
-          <circle cx="26" cy="9" r="4" fill="#007D5E"/>
-          <circle cx="26" cy="9" r="2" fill="#004D3A"/>
+          <rect x="9" y="9" width="4" height="16" rx="1.5" fill="#0A0A0F"/>
+          <rect x="9" y="9" width="13" height="4" rx="1.5" fill="#0A0A0F"/>
+          <rect x="9" y="17" width="9" height="3.5" rx="1.5" fill="#0A0A0F"/>
+          <circle cx="29" cy="5" r="3.5" fill="#0A0A0F"/>
+          <circle cx="29" cy="5" r="1.8" fill="#00C897" opacity="0.6"/>
         </svg>
         <div>
           <div style="font-size:15px;font-weight:900;letter-spacing:-.5px;line-height:1.1;color:var(--dark)">fiskai</div>
@@ -911,7 +911,7 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
           <div class="set-row" style="cursor:default">
             <div class="set-ico" style="background:var(--blue-l)" id="country-flag-set">🇫🇷</div>
             <div class="set-text">
-              <div class="set-name" id="country-lbl">Pays : France 🇫🇷</div>
+              <div class="set-name" id="country-lbl">Pays : —</div>
               <div class="set-desc">Défini à l'inscription · Non modifiable</div>
             </div>
           </div>
@@ -3197,14 +3197,12 @@ function renderUpgradeButtons(){
 // fiskai.fr/app.html?pays=fr  →  mode France
 // fiskai.ch/app.html?pays=ch  →  mode Suisse
 function detectPays(){
-  // fiskai.fr — toujours France
   country = 'fr';
   const validFR = ['ae','sel','sci_ir','sci_is'];
-  if(!statut || statut.endsWith('_ch') || statut === 'ind_ch' || !validFR.includes(statut)) statut = 'ae';
+  if(!statut || !validFR.includes(statut)) statut = 'ae';
   updateCountryBadge();
   buildTvaSelect();
 }
-
 function updateCountryBadge(){
   const isCH = country === 'ch';
   const flag = isCH ? '🇨🇭' : '🇫🇷';
@@ -3215,10 +3213,9 @@ function updateCountryBadge(){
   const nameEl = document.getElementById('country-name');
   if(flagEl) flagEl.textContent = flag;
   if(nameEl) nameEl.textContent = name;
-
   // Paramètres
   const lbl = document.getElementById('country-lbl');
-  if(lbl) lbl.textContent = `Pays : ${name} ${flag}`;
+  if(lbl) lbl.textContent = 'Pays : ' + name + ' ' + flag;
   const flagSet = document.getElementById('country-flag-set');
   if(flagSet) flagSet.textContent = flag;
 
