@@ -725,21 +725,14 @@ src="https://www.facebook.com/tr?id=970971975537160&ev=PageView&noscript=1"
       <span>📋</span>
       <select id="sel-statut" onchange="setStatut(this.value)">
         <optgroup label="🇫🇷 France">
-          <option value="ae">Auto-ent.</option>
-          <option value="sasu" selected>SASU</option>
-          <option value="eurl">EURL</option>
-          <option value="sa">SA</option>
+          <option value="ae">Auto-entrepreneur</option>
+          <option value="sasu" selected>SASU / SAS</option>
+          <option value="eurl">EURL / SARL</option>
           <option value="sci_ir">SCI à l'IR</option>
           <option value="sci_is">SCI à l'IS</option>
-          <option value="sel">SEL/SELARL</option>
+          <option value="sel">Profession libérale / SEL</option>
         </optgroup>
-        <optgroup label="🇨🇭 Suisse">
-          <option value="sarl_ch">Sàrl</option>
-          <option value="sa_ch">SA</option>
-          <option value="ind_ch">Indépendant</option>
-          <option value="sarl_immo_ch">Sàrl immo</option>
-        </optgroup>
-      </select>
+        </select>
     </div>
     <button class="hdr-btn" onclick="toggleTheme()" id="theme-btn">☀️</button>
   </div>
@@ -1282,6 +1275,9 @@ const CFGS={
       {l:`💡 Déficit foncier → jusqu\'à 10 700€/an déductible revenu global`,v:null,tip:true},
       {l:'💡 Régime réel → toujours plus avantageux que micro-foncier si ch. > 30%',v:null,tip:true},
       {l:'💡 Emprunt in fine → déduire intérêts + conserver capital',v:null,tip:true},
+      {l:'💡 IFI : SCI IR → parts incluses dans patrimoine IFI (attention > 1.3M€)',v:null,tip:true},
+      {l:'💡 Plus-value : IR exonéré après 22 ans, PS après 30 ans de détention',v:null,tip:true},
+      {l:'💡 Taxe foncière → 100% déductible des revenus fonciers',v:null,tip:true},
     ]};
   }},
 
@@ -1311,6 +1307,8 @@ const CFGS={
       {l:'💡 Réinvestissement bénéfices → éviter flat tax dividendes',v:null,tip:true},
       {l:'💡 SCI IS → idéal si réinvestissement, SCI IR → idéal si distribution',v:null,tip:true},
       {l:'💡 Holding → remontée dividendes quasi exonérée (régime mère-fille)',v:null,tip:true},
+      {l:'💡 IFI : SCI IS → parts hors IFI (avantage si patrimoine > 1.3M€)',v:null,tip:true},
+      {l:'💡 Plus-value : exonération totale après 30 ans de détention (SCI IR)',v:null,tip:true},
     ]};
   }},
 
@@ -3005,7 +3003,7 @@ function showPaywall(){
       <button onclick="window.open('${proLink}','_blank')" style="display:flex;align-items:center;justify-content:space-between;background:#111;border:1.5px solid rgba(0,200,151,.4);border-radius:14px;padding:16px 18px;cursor:pointer;font-family:'Nunito',sans-serif;width:100%">
         <div style="text-align:left">
           <div style="font-size:15px;font-weight:900;color:white">Pro ⭐</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.4)">${isCH?'Sàrl · SA · Immo':'SASU · EURL · SCI · SEL'}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4)">${isCH?'Sàrl · SA · Immo':'SCI · Immo · Libéral avancé'}</div>
         </div>
         <div style="font-size:16px;font-weight:900;color:#00C897">${proPrice} →</div>
       </button>
